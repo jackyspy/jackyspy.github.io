@@ -77,5 +77,5 @@ theme: landscape
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
   type: git
-  repo: git@github.com:jackyspy/jackyspy/github.io.git
+  repo: git@github.com:jackyspy/jackyspy.github.io.git
   branch: master
