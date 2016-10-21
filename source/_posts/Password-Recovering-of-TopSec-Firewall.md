@@ -32,7 +32,7 @@ nmap扫描发现防火墙只开通了https端口。不是专业的安全研究�
 
 找到的第一篇文章提到了Heartbleed漏洞，却未对漏洞利用方式做过多解释。需要更多学习资料，根据这个方向继续搜索，又找到了一些文章。其中，NSA Equation Group那篇文章信息量最高，对漏洞的特征和产生的原因分析的非常透彻，利用方式也做了简要说明。由于该设备尚未按厂家要求进行“方程式”漏洞修复升级，按照文章的提示，用Brup进行Eligible Candidate漏洞测试（打算用Postman，但因chrome的https证书问题放弃），漏洞果然还在！
 
-怀着激动的心情，尝试了 ls -la />/www/htdocs/1、 find / -type f>/www/htdocs/1 等指令，对防火墙文件系统的目录结构进行初步了解，也看到了配置文件存放的位置。执行 cp /XXX/conf/config>/www/htdocs/1，把配置文件down下来一看，果然是新鲜的味道。
+怀着激动的心情，尝试了 `ls -la />/www/htdocs/1`、 `find / -type f>/www/htdocs/1` 等指令，对防火墙文件系统的目录结构进行初步了解，也看到了配置文件存放的位置。执行 `cp /XXX/conf/config>/www/htdocs/1`，把配置文件down下来一看，果然是新鲜的味道。
 
 启动telnetd服务并尝试连接，报错，估计是没有加特定启动参数的缘故，没做深入研究。看来暂时还是只能通过https漏洞方式跑命令了。
 
@@ -49,7 +49,7 @@ $ http --verify=no https://x.x.x.x/cgi/maincgi.cgi 'Cookie: session_id=x`ls -la 
 
 另一方面，根据漏洞名称和Equation Group搜索到这篇文章：[Equation Group泄露文件分析][6]，才注意到这是国际顶尖黑客组织，也是NSA合作的方程式黑客组织（Equation Group），被另一个名为“The ShadowBrokers”的黑客组织攻下了，珍藏的系列高级工具被打包分享。这可是个好东西！赶紧下载解密，找到ELCA的漏洞利用代码，运行后却发现没有如逾期般的启动nopen远程管理软件，原因未知，颇有些失望。不过在py源码中看到了文件上传的方式，其实就是利用了cgi文件上传处理方式，它每次会在/tmp目录下生成一个cgi\*的临时文件。ELCA利用代码的流程是连续执行多次指令，第一次 `rm /tmp/cgi*`清理tmp目录，接着post上传文件同时复制保存一份 `cp /t*/cg* /tmp/.a`，再加执行权限 `chmod +x /tmp/.a`，最后执行 `/tmp/.a`。
 
-![upload_run.png](http://a2.qpic.cn/psb?/V13kduqE1mEn46/0KAYbZ7jufdP8tv0AQKP518QfgNxDFDNr7hvESG9T8M!/b/dK8AAAAAAAAA&bo=mAYqAgAAAAADB5Q!&rf=viewer_4)
+![upload_run.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/upload_run.png)
 
 当然，代码并没有直接上传一个可执行文件，而是巧妙（恕见识少，我知道*nix下经常这样干）的将需要的多个文件用tar打包后，附到sh脚本的最后。在sh脚本中用dd命令将tar包copy出来再解压运行。下面是工具中stage.sh的部分代码：
 
@@ -58,7 +58,7 @@ $ http --verify=no https://x.x.x.x/cgi/maincgi.cgi 'Cookie: session_id=x`ls -la 
 文件tar打包的Python代码片段：
 
 
-![build_exploit_payload.png](http://upload-images.jianshu.io/upload_images/7629-372bc73d72b9e2e4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![build_exploit_payload.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/build_exploit_payload.png)
 
 就我的需求而言，只是上传脚本执行，就不用做得那么复杂了。简单的post我的sh脚本，同时执行 `sh /tmp/cgi*`。前提是我的sh脚本中都做了清理工作 `rm /tmp/cgi*`。
 
@@ -103,11 +103,11 @@ ls -la /xxx/etc /data/auth/db /tmp >>/www/htdocs/1
 根据登录form提交的 `username` 和 `passwd` 在string窗口搜索，x跟踪调用情况分析，最终来到 000403D4 函数内。
 
 
-![maincgi_403D4.png](http://a2.qpic.cn/psb?/V13kduqE1mEn46/2f0SXgC8cE9Oro5WY6x18S7krJ8PpZ.q8Mk21EklaqQ!/b/dLIAAAAAAAAA&bo=jgKAAgAAAAADByw!&rf=viewer_4)
+![maincgi_403D4.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/maincgi_403D4.png)
 
 下面是更容易理解的C伪代码（我开始分析的时候没找到可用的hexrays，这是事后撰写此文时找到的。:-(  工欲善其事必先利其器啊！）：
 
-![maincgi_403D4_c.png](http://a1.qpic.cn/psb?/V13kduqE1mEn46/wBjxs4d1A*D1DPgjvlj4NujSy5WQkXlgED.*lgVhL0U!/b/dPYAAAAAAAAA&bo=RwOAAgAAAAADB.Q!&rf=viewer_4)
+![maincgi_403D4_c.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/maincgi_403D4_c_m.png)
 
 可以看到，username和passwd参数都原封不动的传入到login函数，想必沿着这个方向一定能找到密码保存的地方。
 
@@ -126,18 +126,17 @@ $ nm -D xxx/lib/* xxx/so/* > symbols.txt
 
 根据export表很快定位到login函数的实现，开始是TLS连接127.0.0.1：4000，接着是一堆错误处理代码。
 
-![login.png](http://a2.qpic.cn/psb?/V13kduqE1mEn46/Es7O9gzr2LhQeGg5SNrw.*Y3Viiwe5gdwNHTo4FYsfA!/b/dLIAAAAAAAAA&bo=gAK9AwAAAAADABk!&rf=viewer_4)
+![login.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/login_m.png)
 
-![login_4000.png](http://a2.qpic.cn/psb?/V13kduqE1mEn46/qucdo7qSyEVFrZ0h*oiFsdegNThUb8gxcI8AyZJjB9E!/b/dK8AAAAAAAAA&bo=gAJPAwAAAAADAOs!&rf=viewer_4)
+![login_4000.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/login_4000_m.png)
 
 其中有一个 `gui_send_reqx` 函数的调用参数 `CFG_AUTH` 引起了我的注意，猜测是一种自定义的类RPC实现。
 
-
-![login_cfg_auth.png](http://a1.qpic.cn/psb?/V13kduqE1mEn46/8Lnnvb94g5YEpFK5ljfUoLB116mhEXItBQ0b6Oa1CG4!/b/dK4AAAAAAAAA&bo=gAKoAwAAAAADAAw!&rf=viewer_4)
+![login_cfg_auth.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/login_cfg_auth.png)
 
 唉，还是C伪代码看得清楚啊！再次哭晕在厕所 :-(
 
-![login_c.png](http://a1.qpic.cn/psb?/V13kduqE1mEn46/csuTu9TG.nK0CeJfMpwyInBSkKDVgU*lmjV0nBIJSHk!/b/dPYAAAAAAAAA&bo=QgOAAgAAAAADAOY!&rf=viewer_4)
+![login_c.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/login_c_m.png)
 
 既然不是通过本地.so调用，那只有知道到底是谁提供了这个rpc服务，才能找到接下来的路。
 
@@ -145,7 +144,7 @@ $ nm -D xxx/lib/* xxx/so/* > symbols.txt
 
 好在我们有执行代码的权限，好在防火墙里面有netstat命令。执行 `netstat -nltp >>/www/htdocs/1` 得到下面的结果：
 
-![netstat.png](http://a3.qpic.cn/psb?/V13kduqE1mEn46/Aa3oBEPX9kKVXxEtZW8QCT32jM9abyB9Ht0kmYso8DA!/b/dK0AAAAAAAAA&bo=9QRYAgAAAAADAI4!&rf=viewer_4)
+![netstat.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/netstat_m.png)
 
 一目了然。原来服务是 `xxx_configd` 提供的呀！被ELCA漏洞利用脚本误导了，以为是只是一个命令行shell，之前跟过，但没有细看。这不，还是要回头找它。
 
@@ -157,26 +156,26 @@ xxx_configd 分析过程并非一帆风顺。
 
 根据RPC传递的参数CFG_AUTH作为线索进行追踪，看到RPC支持多个命令。当命令为CFG_AUTH时，将数字5写到参数传入的内存区域某个变量中。没有其他更多的信息，看来只能根据caller向上一步步追了。
 
-![tos_configd_cfg_auth.png](http://a2.qpic.cn/psb?/V13kduqE1mEn46/i7xiM6NhLEkoOhwX2iLEqaS1Q.vPG.A0Vhojf9bDt7U!/b/dLIAAAAAAAAA&bo=gAL3AgAAAAADAFI!&rf=viewer_4)
+![xxx_configd_cfg_auth.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/tos_configd_cfg_auth.png)
 
 代码回到rpc的消息处理thread中，经过逐步分析，定位到消息处理函数中。
 
-![tos_configd_rpchandle.png](http://a1.qpic.cn/psb?/V13kduqE1mEn46/4Jpd3YyuAc5FxIthUPsvZyL8MJP3fK8QaiEzPQbw*Pw!/b/dLEAAAAAAAAA&bo=gAK4AgAAAAADAB0!&rf=viewer_4)
+![xxx_configd_rpchandle.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/tos_configd_rpchandle.png)
 
 跟进去，可以看到大致的处理流程。有一个switch过程，case 5后面就是CFG_AUTH的处理代码。5就是前面第一个过程中设置的变量。xxx_manager_auth函数用于接管用户密码鉴权工作，它是一个import函数，按照前面的方法查到它在 /xxx/so/libmanager.so 中实现。
 
-![tos_configd_rpchandlelogin.png](http://a2.qpic.cn/psb?/V13kduqE1mEn46/fNOlCWpbMQaLSzRr3oNOlXvWaC3uiZmKOl7Jh6cc9is!/b/dLIAAAAAAAAA&bo=gAK9AgAAAAADABg!&rf=viewer_4)
+![xxx_configd_rpchandlelogin.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/xxx_configd_rpchandlelogin_m.png)
 
 
 #### 胜利的曙光
 
 libmanager的export表非常简练，似乎每一个都让人颇感兴趣。
 
-![libmanager_export.png](http://a3.qpic.cn/psb?/V13kduqE1mEn46/DbT31Sk2SHDJcYM05qC*LGIJ5THRuP6WAyqbb3Idh7Y!/b/dLAAAAAAAAAA&bo=gAIKAwAAAAADB6k!&rf=viewer_4)
+![libmanager_export.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_export_m.png)
 
 先看看我们的目标函数xxx_manager_auth：
 
-![libmanager_auth.png](http://a2.qpic.cn/psb?/V13kduqE1mEn46/IyiQUDc1fYUy5CGLh2PXNwIBIUR01zx4cwh6g8A4s*8!/b/dLIAAAAAAAAA&bo=JQOAAgAAAAADB4Y!&rf=viewer_4)
+![libmanager_auth.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_auth_m.png)
 
 
 信息量很大，到这里基本上就看到了胜利的曙光。
@@ -187,15 +186,15 @@ libmanager的export表非常简练，似乎每一个都让人颇感兴趣。
 
 跟进match_manager_name函数，并没有立即发现直观的密码文件读取过程。取而代之的是，内存中存在最多500个struct，其中包含了用户名和MD5值，鉴权过程就是与其一一进行匹配比对。Local_db_dev_node是一个全局buffer，搞清楚它的数据来源就找到根源了。
 
-![libmanager_match_manager_name.png](http://a1.qpic.cn/psb?/V13kduqE1mEn46/H9cPBi6cxHINPOAy*jf86gd*jHG7N1BjlrbvJPEQs9w!/b/dLEAAAAAAAAA&bo=kwOAAgAAAAADBzA!&rf=viewer_4)
+![libmanager_match_manager_name.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_match_manager_name.png)
 
 按X查看Local_db_dev_node的reference，还真不少。
 
-![libmanager_xref.png](http://a2.qpic.cn/psb?/V13kduqE1mEn46/kkTWpH..4gJqUJJziJh8zh*0otIna*L1uPQgQHLYaC4!/b/dLIAAAAAAAAA&bo=nAOAAgAAAAAFBzk!&rf=viewer_4)
+![libmanager_xref.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_xref_m.png)
 
 第一个read_dev_manager_file就很像，跟进去看一下。
 
-![libmanager_read_dev_manager_file.png](http://a1.qpic.cn/psb?/V13kduqE1mEn46/9i8ZmH26zLqoT7nHjU3bN1NuIiHY7VnRvYKnagWxkjk!/b/dAIBAAAAAAAA&bo=*QKAAgAAAAADB18!&rf=viewer_4)
+![libmanager_read_dev_manager_file.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_read_dev_manager_file_m.png)
 
 Bingo！就是它了！ `/xxx/etc/xxx_dev_manager_info` 其实这个文件之前也注意到，不过没曾想它居然保存了鉴权信息，而且是用户名密码拼接MD5这么简单！
 
@@ -218,7 +217,7 @@ print(hashlib.md5('********' + '111111').hexdigest())
 
 想起 libmanager 不是有那么多可疑的函数吗？挑感兴趣的进去看看，比如write_memdata2flash：
 
-![libmanager_write_memdata2flash.png](http://a2.qpic.cn/psb?/V13kduqE1mEn46/sxiCM*GdI3ocCdLvuUIFHB6rZ0Pp88BAORvYagN5Ni8!/b/dLIAAAAAAAAA&bo=vwOAAgAAAAADBxw!&rf=viewer_4)
+![libmanager_write_memdata2flash.png](http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_write_memdata2flash_m.png)
 
 对，就它了。一般网络设备修改配置以后，不都还来一个 `wr mem` 吗？估计 /data/auth/db/ 才是最终保存数据的地方，/xxx/etc可能重启的时候会重新copy覆盖。
 
