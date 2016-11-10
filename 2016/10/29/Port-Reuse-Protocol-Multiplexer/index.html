@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>如何在Web服务器80端口上开启SSH服务 | jackyspy&#39;s blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="本文所讨论的网络端口复用并非指网络编程中采用SO_REUSEADDR选项的 Socket Bind 复用。它更像是一个带特定路由功能的端口转发工具，在应用层实现。
+背景笔者所处网络中防火墙只开放了一个端口，但却希望能够提供多种网络服务用于测试。所以需要寻求一种解决方案，能够对TCP数据包特征进行识别，用以实现在一个开放端口上同时提供HTTP/SSH/MQTT等多种服务。
+比如说，你可以在80端口上">
+<meta property="og:type" content="article">
+<meta property="og:title" content="如何在Web服务器80端口上开启SSH服务">
+<meta property="og:url" content="http://yoursite.com/2016/10/29/Port-Reuse-Protocol-Multiplexer/index.html">
+<meta property="og:site_name" content="jackyspy's blog">
+<meta property="og:description" content="本文所讨论的网络端口复用并非指网络编程中采用SO_REUSEADDR选项的 Socket Bind 复用。它更像是一个带特定路由功能的端口转发工具，在应用层实现。
+背景笔者所处网络中防火墙只开放了一个端口，但却希望能够提供多种网络服务用于测试。所以需要寻求一种解决方案，能够对TCP数据包特征进行识别，用以实现在一个开放端口上同时提供HTTP/SSH/MQTT等多种服务。
+比如说，你可以在80端口上">
+<meta property="og:updated_time" content="2016-11-10T02:46:30.857Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="如何在Web服务器80端口上开启SSH服务">
+<meta name="twitter:description" content="本文所讨论的网络端口复用并非指网络编程中采用SO_REUSEADDR选项的 Socket Bind 复用。它更像是一个带特定路由功能的端口转发工具，在应用层实现。
+背景笔者所处网络中防火墙只开放了一个端口，但却希望能够提供多种网络服务用于测试。所以需要寻求一种解决方案，能够对TCP数据包特征进行识别，用以实现在一个开放端口上同时提供HTTP/SSH/MQTT等多种服务。
+比如说，你可以在80端口上">
+  
+    <link rel="alternate" href="/atom.xml" title="jackyspy&#39;s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  
+
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">jackyspy&#39;s blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Port-Reuse-Protocol-Multiplexer" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/10/29/Port-Reuse-Protocol-Multiplexer/" class="article-date">
+  <time datetime="2016-10-29T12:16:43.000Z" itemprop="datePublished">2016-10-29</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/网络/">网络</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      如何在Web服务器80端口上开启SSH服务
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>本文所讨论的网络端口复用并非指网络编程中采用SO_REUSEADDR选项的 Socket Bind 复用。它更像是一个带特定路由功能的端口转发工具，在应用层实现。</p>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>笔者所处网络中防火墙只开放了一个端口，但却希望能够提供多种网络服务用于测试。所以需要寻求一种解决方案，能够对TCP数据包特征进行识别，用以实现在一个开放端口上同时提供HTTP/SSH/MQTT等多种服务。</p>
+<p>比如说，你可以在80端口上复用一个SSH服务，普通用户只知道浏览器访问<a href="http://x.x.x.x/" target="_blank" rel="external">http://x.x.x.x/</a> ，而你却可以用 <code>ssh user@x.x.x.x -p 80</code> 这样的方式来访问你的服务器，这也不失为一种隐藏SSH服务的办法。</p>
+<h2 id="端口复用神器-sslh"><a href="#端口复用神器-sslh" class="headerlink" title="端口复用神器 - sslh"></a>端口复用神器 - sslh</h2><p><a href="http://www.rutschle.net/tech/sslh.shtml" target="_blank" rel="external">sslh</a>是一款采用C语言编写的开源端口复用软件，目前支持 HTTP、SSL、SSH、OpenVPN、tinc、XMPP等多种协议识别。它主要运行于*nix环境，源代码托管在<a href="https://github.com/yrutschle/sslh" target="_blank" rel="external">GitHub</a>上。据官网介绍，Windows系统下可在Cygwin环境中编译运行，笔者未作测试。</p>
+<p>编译过程并不复杂，直接按照官方文档操作，不在此赘述。Debian用户可直接通过<code>sudo apt-get install sslh</code>安装。</p>
+<p>编译生成两个可执行文件：sslh-fork 和 sslh-select 。二者的区别在于工作模式的差异：</p>
+<ul>
+<li><code>sslh-fork</code> 采用*nix的进程fork模型，为每一个TCP连接fork一个子进程来处理包的转发。对于长连接而言，无需频繁建立大量新连接，fork带来的开销基本可以忽略。但是如果对像HTTP这样的短连接请求，采用fork子进程的方式来进行包转发的话，在出现大量并发请求时，效率会受到一定影响。不过fork模式经过了良好测试，运行起来稳定可靠。</li>
+<li><code>sslh-select</code> 采用单线程监控管理所有网络连接，是比较新的一种方式。但相对epool等基于事件的I/O机制来说，select的传统轮询模式效率还是相对较低的。</li>
+</ul>
+<p>sslh支持在配置文件中使用正则表达式来自定义协议识别规则，但是我在尝试 MQTT v3.1 协议识别时，出现了<a href="https://github.com/yrutschle/sslh/issues/87" target="_blank" rel="external">问题</a>。当然也有可能是我编写的正则表达式和它使用的正则库不匹配。</p>
+<h2 id="高性能负载均衡器-HAProxy"><a href="#高性能负载均衡器-HAProxy" class="headerlink" title="高性能负载均衡器 - HAProxy"></a>高性能负载均衡器 - HAProxy</h2><p><a href="http://www.haproxy.org/" target="_blank" rel="external">HAProxy</a>是一款开源高性能的 TCP/HTTP 软件负载均衡器，目前在游戏后端服务和Web服务器负载均衡等方面都有着非常广泛的应用。通过配置，可以实现多种SSL应用复用同一个端口，比如 HTTPS、SSH、OpenVPN等。这里有一篇<a href="http://www.tuicool.com/articles/auqyuur" target="_blank" rel="external">参考文档</a>。</p>
+<p>虽然HAProxy性能卓越，但它不容易通过扩展来满足特定的需求。</p>
+<h2 id="为网络而生的现代语言-Go"><a href="#为网络而生的现代语言-Go" class="headerlink" title="为网络而生的现代语言 - Go"></a>为网络而生的现代语言 - Go</h2><p><a href="http://golang.org" target="_blank" rel="external">Go</a>语言是近几年我学习研究过的优秀编程语言之一，它的简洁和高效深深吸引了我（我喜欢简单的东西，比如Python）。Go语言的goroutine在语言级别提供并发支持，channel又在这些协程之间提供便捷可靠的通信机制。结合起来，Go语言非常适合编写高并发的网络应用。之前也打算过用Python+gevent的方式，最后还是考虑到Go语言静态编译后的高效率，没有选择Python。</p>
+<p>在Github上翻腾，找到一个Go语言实现的类sslh项目——<a href="https://github.com/jamescun/switcher" target="_blank" rel="external">Switcher</a>。它很久没有更新，支持的协议也非常少——实际上它只能识别SSH协议。Switcher的实现非常简单，核心代码不到200行。于是决定在它的基础上进行改造，实现我所需要的功能。</p>
+<h2 id="D——I——Y"><a href="#D——I——Y" class="headerlink" title="D——I——Y"></a>D——I——Y</h2><p>到Github上<a href="https://github.com/jackyspy/switcher" target="_blank" rel="external">fork</a>了一份Switcher代码，在它的基础上修改。说是修改，其实已面目全非。新的实现中调整了原有架构，去掉对SSH协议的直接支持，转而采用更加通用的协议识别模式，以求达到可以不通过修改程序而只需简单配置即可支持大部分协议，让程序通用性更强一些。</p>
+<p>首先最常见的协议匹配模式是根据packet头几个字节对目标协议特征进行比对。如果只是保存每个协议的头N个字节，不加任何处理逐一比对的话，可能会存在一定的效率问题。一方面，需要对所有pattern进行遍历，逐个与收到的packet进行比较；另一方面，如果网络延时较大，不能一次性收集到足够多的字节，则需要反复多次比对。举一个比较极端的例子，假设我有100个目标协议需要比对匹配，pattern大小都在10字节以上，这时候我通过telnet/netcat连接服务器，一个字节一个字节的发送数据，则服务器可能要进行10*100次字符串比较。</p>
+<p>为了解决这个问题，简单设计了一个树形结构，把所有的pattern都以字节为单位填充到这棵树上，直至末梢。叶节点上保存协议对应的目标IP和端口值。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">func</span> <span class="params">(t *MatchTree)</span> <span class="title">Add</span><span class="params">(p *PREFIX)</span></span> &#123;</div><div class="line">	<span class="keyword">for</span> _, patternStr := <span class="keyword">range</span> p.Patterns &#123;</div><div class="line">		pattern := []<span class="keyword">byte</span>(patternStr)</div><div class="line">		node := t.Root</div><div class="line">		<span class="keyword">for</span> i, b := <span class="keyword">range</span> pattern &#123;</div><div class="line">			nodes := node.ChildNodes</div><div class="line">			<span class="keyword">if</span> next_node, ok := nodes[b]; ok &#123;</div><div class="line">				node = next_node</div><div class="line">				<span class="keyword">continue</span></div><div class="line">			&#125;</div><div class="line"></div><div class="line">			<span class="keyword">if</span> nodes == <span class="literal">nil</span> &#123;</div><div class="line">				nodes = <span class="built_in">make</span>(<span class="keyword">map</span>[<span class="keyword">byte</span>]*MatchTreeNode)</div><div class="line">				node.ChildNodes = nodes</div><div class="line">			&#125;</div><div class="line"></div><div class="line">			root, leaf := createSubTree(pattern[i+<span class="number">1</span>:])</div><div class="line">			leaf.Address = p.Address</div><div class="line">			nodes[b] = root</div><div class="line"></div><div class="line">			<span class="keyword">break</span></div><div class="line">		&#125;</div><div class="line">	&#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>也许是我想太多，在需要比对的协议数量很少的情况下，可能这样的设计并不能带来根本上的效率提升。不过我喜欢这种为了可能的效率提升而不断努力的赶脚 ^_^</p>
+<p>相比packet prefix匹配的模式，正则表达式会更加灵活。所以我采取类似sslh的方式，加入了对正则表达式的支持。考虑到效率和具体实现的问题，对正则表达式匹配规则加入了一定的限制，比如需要知道目标字符串的最大长度。正则表达式只能在packet buffer达到一定长度要求的情况下逐一匹配。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">func</span> <span class="params">(p *REGEX)</span> <span class="title">Probe</span><span class="params">(header []<span class="keyword">byte</span>)</span> <span class="params">(result ProbeResult, address <span class="keyword">string</span>)</span></span> &#123;</div><div class="line">	<span class="keyword">if</span> p.MinLength &gt; <span class="number">0</span> &amp;&amp; <span class="built_in">len</span>(header) &lt; p.MinLength &#123;</div><div class="line">		<span class="keyword">return</span> TRYAGAIN, <span class="string">""</span></div><div class="line">	&#125;</div><div class="line">	<span class="keyword">for</span> _, re := <span class="keyword">range</span> p.regexpList &#123;</div><div class="line">		<span class="keyword">if</span> re.Match(header) &#123;</div><div class="line">			<span class="keyword">return</span> MATCH, p.Address</div><div class="line">		&#125;</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	<span class="keyword">if</span> p.MaxLength &gt; <span class="number">0</span> &amp;&amp; <span class="built_in">len</span>(header) &gt;= p.MaxLength &#123;</div><div class="line">		<span class="keyword">return</span> UNMATCH, <span class="string">""</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	<span class="keyword">return</span> TRYAGAIN, <span class="string">""</span></div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>基于上述两种简单的匹配规则，很容易可以构造出ssh、http等常用的协议。在实现中，我加入了一些常用协议的支持，省去用户自定义的麻烦。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">case</span> <span class="string">"ssh"</span>:</div><div class="line">	service = <span class="string">"prefix"</span></div><div class="line">	p = &amp;PREFIX&#123;ps.BaseConfig, []<span class="keyword">string</span>&#123;<span class="string">"SSH"</span>&#125;&#125;</div><div class="line"><span class="keyword">case</span> <span class="string">"http"</span>:</div><div class="line">	service = <span class="string">"prefix"</span></div><div class="line">	p = &amp;PREFIX&#123;ps.BaseConfig, []<span class="keyword">string</span>&#123;<span class="string">"GET "</span>, <span class="string">"POST "</span>, <span class="string">"PUT "</span>, <span class="string">"DELETE "</span>, <span class="string">"HEAD "</span>, <span class="string">"OPTIONS "</span>&#125;&#125;</div></pre></td></tr></table></figure>
+<p>特殊的协议还是需要单独实现的。比如说，我所需要的MQTT协议就无法通过简单的字符串比对或者正则表达式方式来进行识别。因为它没有既定的模式，结构也不是固定长度。MQTT协议识别实现如下：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *MQTT)</span> <span class="title">Probe</span><span class="params">(header []<span class="keyword">byte</span>)</span> <span class="params">(result ProbeResult, address <span class="keyword">string</span>)</span></span> &#123;</div><div class="line">	<span class="keyword">if</span> header[<span class="number">0</span>] != <span class="number">0x10</span> &#123;</div><div class="line">		<span class="keyword">return</span> UNMATCH, <span class="string">""</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	<span class="keyword">if</span> <span class="built_in">len</span>(header) &lt; <span class="number">13</span> &#123;</div><div class="line">		<span class="keyword">return</span> TRYAGAIN, <span class="string">""</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	i := <span class="number">1</span></div><div class="line">	<span class="keyword">for</span> ; ; i++ &#123;</div><div class="line">		<span class="keyword">if</span> header[i]&amp;<span class="number">0x80</span> == <span class="number">0</span> &#123;</div><div class="line">			<span class="keyword">break</span></div><div class="line">		&#125;</div><div class="line"></div><div class="line">		<span class="keyword">if</span> i == <span class="number">4</span> &#123;</div><div class="line">			<span class="keyword">return</span> UNMATCH, <span class="string">""</span></div><div class="line">		&#125;</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	i++</div><div class="line"></div><div class="line">	<span class="keyword">if</span> bytes.Compare(header[i:i+<span class="number">8</span>], []<span class="keyword">byte</span>(<span class="string">"\x00\x06MQIsdp"</span>)) == <span class="number">0</span> || bytes.Compare(header[i:i+<span class="number">6</span>], []<span class="keyword">byte</span>(<span class="string">"\x00\x04MQTT"</span>)) == <span class="number">0</span> &#123;</div><div class="line">		<span class="keyword">return</span> MATCH, s.Address</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	<span class="keyword">return</span> UNMATCH, <span class="string">""</span></div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>配置文件采用了json格式，主要是为了方便和灵活。下面是一个示例：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div></pre></td><td class="code"><pre><div class="line">&#123;</div><div class="line">    &quot;listen&quot;: &quot;:80&quot;,</div><div class="line">    &quot;default&quot;: &quot;127.0.0.1:80&quot;,</div><div class="line">    &quot;timeout&quot;: 1,</div><div class="line">    &quot;connect_timeout&quot;: 1,</div><div class="line">    &quot;protocols&quot;: [</div><div class="line">        &#123;</div><div class="line">            &quot;service&quot;: &quot;ssh&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:22&quot;</div><div class="line">        &#125;,</div><div class="line">        &#123;</div><div class="line">            &quot;service&quot;: &quot;mqtt&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:1883&quot;</div><div class="line">        &#125;,</div><div class="line">        &#123;</div><div class="line">            &quot;name&quot;: &quot;custom_http&quot;,</div><div class="line">            &quot;service&quot;: &quot;regex&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:8080&quot;,</div><div class="line">            &quot;patterns&quot;: [</div><div class="line">                &quot;^(GET|POST|PUT|DELETE|HEAD|\\x79PTIONS) &quot;</div><div class="line">            ]</div><div class="line">        &#125;,</div><div class="line">        &#123;</div><div class="line">            &quot;service&quot;: &quot;prefix&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:8081&quot;,</div><div class="line">            &quot;patterns&quot;: [</div><div class="line">                &quot;GET &quot;,</div><div class="line">                &quot;POST &quot;</div><div class="line">            ]</div><div class="line">        &#125;</div><div class="line">    ]</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<h2 id="性能测试"><a href="#性能测试" class="headerlink" title="性能测试"></a>性能测试</h2><h3 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h3><p>首先准备一个简单的Web服务应用。之前用Python+bjoern写过一个简易脚本，用来自己测试网络带宽，但找了半天没找着。干脆用Go语言重新弄了一个，功能是根据传入参数值N，返回N个字符。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">package</span> main</div><div class="line"></div><div class="line"><span class="keyword">import</span> (</div><div class="line">	<span class="string">"bytes"</span></div><div class="line">	<span class="string">"flag"</span></div><div class="line">	<span class="string">"fmt"</span></div><div class="line">	<span class="string">"log"</span></div><div class="line">	<span class="string">"net/http"</span></div><div class="line">	<span class="string">"regexp"</span></div><div class="line">	<span class="string">"strconv"</span></div><div class="line">	<span class="string">"strings"</span></div><div class="line">)</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">func</span> <span class="title">defaultHandler</span><span class="params">(w http.ResponseWriter, r *http.Request)</span></span> &#123;</div><div class="line">	<span class="keyword">if</span> r.URL.Path == <span class="string">"/"</span> &#123;</div><div class="line">		fmt.Fprintln(w, <span class="string">"It works."</span>)</div><div class="line">		<span class="keyword">return</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	myHandler(w, r)</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">func</span> <span class="title">myHandler</span><span class="params">(w http.ResponseWriter, r *http.Request)</span></span> &#123;</div><div class="line">	re := regexp.MustCompile(<span class="string">`^/(\d+)([kKmMgGtT]?)$`</span>)</div><div class="line">	match := re.FindStringSubmatch(r.URL.Path)</div><div class="line">	<span class="keyword">if</span> match == <span class="literal">nil</span> &#123;</div><div class="line">		http.NotFound(w, r)</div><div class="line">		<span class="keyword">return</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	buffSize := <span class="number">20480</span></div><div class="line">	buff := bytes.Repeat([]<span class="keyword">byte</span>&#123;<span class="string">'X'</span>&#125;, buffSize)</div><div class="line"></div><div class="line">	size, _ := strconv.ParseInt(match[<span class="number">1</span>], <span class="number">10</span>, <span class="number">64</span>)</div><div class="line">	<span class="keyword">switch</span> strings.ToLower(match[<span class="number">2</span>]) &#123;</div><div class="line">	<span class="keyword">case</span> <span class="string">"k"</span>:</div><div class="line">		size *= <span class="number">1</span> &lt;&lt; <span class="number">10</span></div><div class="line">	<span class="keyword">case</span> <span class="string">"m"</span>:</div><div class="line">		size *= <span class="number">1</span> &lt;&lt; <span class="number">20</span></div><div class="line">	<span class="keyword">case</span> <span class="string">"g"</span>:</div><div class="line">		size *= <span class="number">1</span> &lt;&lt; <span class="number">30</span></div><div class="line">	<span class="keyword">case</span> <span class="string">"t"</span>:</div><div class="line">		size *= <span class="number">1</span> &lt;&lt; <span class="number">40</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	w.Header().Set(<span class="string">"Content-Length"</span>, strconv.FormatInt(size, <span class="number">10</span>))</div><div class="line">	<span class="keyword">for</span> buffSize := <span class="keyword">int64</span>(buffSize); size &gt;= buffSize; size -= buffSize &#123;</div><div class="line">		w.Write(buff)</div><div class="line">	&#125;</div><div class="line">	<span class="keyword">if</span> size &gt; <span class="number">0</span> &#123;</div><div class="line">		w.Write(bytes.Repeat([]<span class="keyword">byte</span>&#123;<span class="string">'X'</span>&#125;, <span class="keyword">int</span>(size)))</div><div class="line">	&#125;</div><div class="line"></div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</div><div class="line">	portPtr := flag.Int(<span class="string">"port"</span>, <span class="number">8080</span>, <span class="string">"监听端口"</span>)</div><div class="line"></div><div class="line">	flag.Parse()</div><div class="line"></div><div class="line">	http.HandleFunc(<span class="string">"/"</span>, defaultHandler)</div><div class="line">	err := http.ListenAndServe(fmt.Sprintf(<span class="string">":%d"</span>, *portPtr), <span class="literal">nil</span>)</div><div class="line">	<span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</div><div class="line">		log.Fatal(<span class="string">"ListenAndServe: "</span>, err)</div><div class="line">	&#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>编译运行，测试Web服务器运行正常。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div></pre></td><td class="code"><pre><div class="line">$ go build test.go</div><div class="line">$ ./<span class="built_in">test</span> -port 9999 &amp;</div><div class="line">$ curl localhost:9999/1</div><div class="line">X</div><div class="line">$ curl localhost:9999/10</div><div class="line">XXXXXXXXXX</div><div class="line">$ curl -o /dev/null localhost:9999/10g</div><div class="line">  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current</div><div class="line">                                 Dload  Upload   Total   Spent    Left  Speed</div><div class="line">100 10.0G  100 10.0G    0     0  1437M      0  0:00:07  0:00:07 --:--:-- 1469M</div></pre></td></tr></table></figure>
+<p>类似于上面的演示过程，我用curl下载大文件来测试网络I/O速率。当然本次测试过程并没有经过物理网卡，而是直接通过了loopback接口。这样可以更客观的比对在经过代理后，速度下降的幅度。</p>
+<p>另外，采用类似Apache的ab压力测试工具，测试高并发情况下的Web响应速度。这里，我使用了比ab更变态的boom。它是一款Go语言实现的开源压测软件，最近刚更名为hey，主页上称因其与Python版压力测试工具<a href="https://github.com/tarekziade/boom" target="_blank" rel="external">Boom!</a>名称冲突。安装和使用都很简单：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div></pre></td><td class="code"><pre><div class="line">$ go get -u github.com/rakyll/hey</div><div class="line">$ <span class="variable">$GOPATH</span>/bin/hey http://localhost:9999/1</div><div class="line">......</div><div class="line">All requests done.</div><div class="line"></div><div class="line">Summary:</div><div class="line">  Total:        0.0223 secs</div><div class="line">  Slowest:      0.0182 secs</div><div class="line">  Fastest:      0.0002 secs</div><div class="line">  Average:      0.0039 secs</div><div class="line">  Requests/sec: 8962.9371</div><div class="line">  Total data:   200 bytes</div><div class="line">  Size/request: 1 bytes</div><div class="line">......</div></pre></td></tr></table></figure>
+<p>下载安装我修改过的Switcher版本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ go get github.com/jackyspy/switcher</div></pre></td></tr></table></figure>
+<p>sslh运行的命令如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ sudo sslh-select -n -p 127.0.0.1:9998 --ssh 127.0.0.1:22 --http 127.0.0.1:9999</div></pre></td></tr></table></figure>
+<p>测试Switcher采用下面的配置文件default.cfg：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line">&#123;</div><div class="line">    &quot;listen&quot;: &quot;:9997&quot;,</div><div class="line">    &quot;default&quot;: &quot;127.0.0.1:22&quot;,</div><div class="line">    &quot;timeout&quot;: 1,</div><div class="line">    &quot;connect_timeout&quot;: 1,</div><div class="line">    &quot;protocols&quot;: [</div><div class="line">        &#123;</div><div class="line">            &quot;service&quot;: &quot;ssh&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:22&quot;</div><div class="line">        &#125;,</div><div class="line">        &#123;</div><div class="line">            &quot;service&quot;: &quot;http&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:9999&quot;</div><div class="line">        &#125;</div><div class="line">    ]</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>测试过程主要用到下面两条命令，测试sslh和switcher时更改端口号即可。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">$ curl -o /dev/null localhost:9999/10g</div><div class="line">$ $GOPATH/bin/hey -n 100000 http://localhost:9999/1</div></pre></td></tr></table></figure>
+<p>OK，万事俱备，只待开测。</p>
+<h3 id="开始测试"><a href="#开始测试" class="headerlink" title="开始测试"></a>开始测试</h3><p>测试分为两块，一是测试大文件下载速率，为了不受限于网卡速率，在本机测试。另一块是测试Web请求并发量，在另一台电脑上发起测试。</p>
+<p>为了减少人工操作量，简单用Python写了一段代码，用于多次测试速度并输出结果：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div></pre></td><td class="code"><pre><div class="line"><span class="comment"># coding=utf-8</span></div><div class="line"><span class="keyword">from</span> __future__ <span class="keyword">import</span> print_function</div><div class="line"><span class="keyword">import</span> itertools</div><div class="line"><span class="keyword">from</span> subprocess <span class="keyword">import</span> check_output</div><div class="line"></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_speed</span><span class="params">(port)</span>:</span></div><div class="line">    cmd = <span class="string">'curl -o /dev/null -s -w %&#123;&#123;speed_download&#125;&#125; localhost:&#123;&#125;/10g'</span>.format(port)  <span class="comment"># noqa</span></div><div class="line">    speed = check_output(cmd.split())</div><div class="line">    <span class="keyword">return</span> float(speed)</div><div class="line"></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">test_multi_times</span><span class="params">(port, times)</span>:</span></div><div class="line">    <span class="keyword">return</span> map(get_speed, itertools.repeat(port, times))</div><div class="line"></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">format_speed</span><span class="params">(speed)</span>:</span></div><div class="line">    <span class="keyword">return</span> str(int(<span class="number">0.5</span> + speed / <span class="number">1024</span> / <span class="number">1024</span>))</div><div class="line"></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></div><div class="line">    testcases = &#123;</div><div class="line">        <span class="string">'Direct'</span>: <span class="number">9999</span>,</div><div class="line">        <span class="string">'sslh'</span>: <span class="number">9998</span>,</div><div class="line">        <span class="string">'switcher'</span>: <span class="number">9997</span></div><div class="line">    &#125;</div><div class="line"></div><div class="line">    count = <span class="number">10</span></div><div class="line"></div><div class="line">    print(<span class="string">'| Target | &#123;&#125; | Avg | '</span>.format(</div><div class="line">        <span class="string">' | '</span>.join(str(x) <span class="keyword">for</span> x <span class="keyword">in</span> range(<span class="number">1</span>, count + <span class="number">1</span>))))</div><div class="line">    print(<span class="string">' --: '</span>.join(<span class="string">'|'</span> * (count + <span class="number">3</span>)))</div><div class="line">    <span class="keyword">for</span> name, port <span class="keyword">in</span> testcases.items():</div><div class="line">        speed_list = test_multi_times(port, count)</div><div class="line">        speed_list.append(sum(speed_list) / len(speed_list))</div><div class="line">        print(<span class="string">'|&#123;&#125;|&#123;&#125;|'</span>.format(name, <span class="string">'|'</span>.join(map(format_speed, speed_list))))</div><div class="line"></div><div class="line"></div><div class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</div><div class="line">    main()</div></pre></td></tr></table></figure>
+<p>运行后得到结果如下（速度单位是MB/s）：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:right">Target</th>
+<th style="text-align:right">1</th>
+<th style="text-align:right">2</th>
+<th style="text-align:right">3</th>
+<th style="text-align:right">4</th>
+<th style="text-align:right">5</th>
+<th style="text-align:right">6</th>
+<th style="text-align:right">7</th>
+<th style="text-align:right">8</th>
+<th style="text-align:right">9</th>
+<th style="text-align:right">10</th>
+<th style="text-align:right">Avg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right">switcher</td>
+<td style="text-align:right">870</td>
+<td style="text-align:right">876</td>
+<td style="text-align:right">924</td>
+<td style="text-align:right">915</td>
+<td style="text-align:right">885</td>
+<td style="text-align:right">928</td>
+<td style="text-align:right">904</td>
+<td style="text-align:right">880</td>
+<td style="text-align:right">909</td>
+<td style="text-align:right">898</td>
+<td style="text-align:right">899</td>
+</tr>
+<tr>
+<td style="text-align:right">sslh</td>
+<td style="text-align:right">866</td>
+<td style="text-align:right">865</td>
+<td style="text-align:right">860</td>
+<td style="text-align:right">880</td>
+<td style="text-align:right">865</td>
+<td style="text-align:right">861</td>
+<td style="text-align:right">866</td>
+<td style="text-align:right">863</td>
+<td style="text-align:right">864</td>
+<td style="text-align:right">856</td>
+<td style="text-align:right">865</td>
+</tr>
+<tr>
+<td style="text-align:right">Direct</td>
+<td style="text-align:right">1446</td>
+<td style="text-align:right">1505</td>
+<td style="text-align:right">1392</td>
+<td style="text-align:right">1362</td>
+<td style="text-align:right">1423</td>
+<td style="text-align:right">1419</td>
+<td style="text-align:right">1395</td>
+<td style="text-align:right">1492</td>
+<td style="text-align:right">1412</td>
+<td style="text-align:right">1427</td>
+<td style="text-align:right">1427</td>
+</tr>
+</tbody>
+</table>
+<p>可以看出经过代理后，下行速率有明显下降。其中sslh比switcher略低，差异不是太大。</p>
+<p>同样的，为了方便测试并发请求响应，也写了一个脚本来完成：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div></pre></td><td class="code"><pre><div class="line"># coding=utf-8</div><div class="line">from __future__ import print_function</div><div class="line">import itertools</div><div class="line">from subprocess import check_output</div><div class="line"></div><div class="line"></div><div class="line">def get_speed(url):</div><div class="line">    cmd = &quot;hey -n 100000 -c 50 &#123;&#125;  | grep &apos;Requests/sec&apos;&quot;.format(url)  # noqa</div><div class="line">    output = check_output(cmd, shell=True)</div><div class="line">    return float(output.partition(&apos;:&apos;)[2])</div><div class="line"></div><div class="line"></div><div class="line">def test_multi_times(url, times):</div><div class="line">    return map(get_speed, itertools.repeat(url, times))</div><div class="line"></div><div class="line"></div><div class="line">def main():</div><div class="line">    testcases = &#123;</div><div class="line">        &apos;Direct&apos;: &apos;http://x.x.x.x:9999/1&apos;,</div><div class="line">        &apos;sslh&apos;: &apos;http://x.x.x.x:9998/1&apos;,</div><div class="line">        &apos;switcher&apos;: &apos;http://x.x.x.x:9997/1&apos;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    count = 10</div><div class="line"></div><div class="line">    print(&apos;| Target | &#123;&#125; | Average | &apos;.format(</div><div class="line">        &apos; | &apos;.join(str(x) for x in range(1, count + 1))))</div><div class="line">    print(&apos; --: &apos;.join(&apos;|&apos; * (count + 3)))</div><div class="line">    for name, port in testcases.items():</div><div class="line">        speed_list = test_multi_times(port, count)</div><div class="line">        speed_list.append(sum(speed_list) / len(speed_list))</div><div class="line">        print(&apos;|&#123;&#125;|&#123;&#125;|&apos;.format(name, &apos;|&apos;.join(&apos;&#123;:.0f&#125;&apos;.format(x + 0.5)</div><div class="line">                                              for x in speed_list)))</div><div class="line"></div><div class="line"></div><div class="line">if __name__ == &apos;__main__&apos;:</div><div class="line">    main()</div></pre></td></tr></table></figure>
+<p>运行后得到结果如下（速度单位是Requests/s）：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:right">Target</th>
+<th style="text-align:right">1</th>
+<th style="text-align:right">2</th>
+<th style="text-align:right">3</th>
+<th style="text-align:right">4</th>
+<th style="text-align:right">5</th>
+<th style="text-align:right">6</th>
+<th style="text-align:right">7</th>
+<th style="text-align:right">8</th>
+<th style="text-align:right">9</th>
+<th style="text-align:right">10</th>
+<th style="text-align:right">Average</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right">switcher</td>
+<td style="text-align:right">14367</td>
+<td style="text-align:right">14886</td>
+<td style="text-align:right">15144</td>
+<td style="text-align:right">14289</td>
+<td style="text-align:right">15456</td>
+<td style="text-align:right">14834</td>
+<td style="text-align:right">14871</td>
+<td style="text-align:right">14951</td>
+<td style="text-align:right">14610</td>
+<td style="text-align:right">14865</td>
+<td style="text-align:right">14827</td>
+</tr>
+<tr>
+<td style="text-align:right">sslh</td>
+<td style="text-align:right">13892</td>
+<td style="text-align:right">14281</td>
+<td style="text-align:right">14469</td>
+<td style="text-align:right">14352</td>
+<td style="text-align:right">14468</td>
+<td style="text-align:right">14132</td>
+<td style="text-align:right">14510</td>
+<td style="text-align:right">14565</td>
+<td style="text-align:right">14633</td>
+<td style="text-align:right">14555</td>
+<td style="text-align:right">14386</td>
+</tr>
+<tr>
+<td style="text-align:right">Direct</td>
+<td style="text-align:right">20494</td>
+<td style="text-align:right">20110</td>
+<td style="text-align:right">20558</td>
+<td style="text-align:right">19519</td>
+<td style="text-align:right">19467</td>
+<td style="text-align:right">19891</td>
+<td style="text-align:right">19777</td>
+<td style="text-align:right">19682</td>
+<td style="text-align:right">20737</td>
+<td style="text-align:right">20396</td>
+<td style="text-align:right">20063</td>
+</tr>
+</tbody>
+</table>
+<p>类似前面的测试，RPS在经过代理后也存在较明显下降。sslh比switcher略低，差异不大。</p>
+<h2 id="更多应用场景-？？"><a href="#更多应用场景-？？" class="headerlink" title="更多应用场景 ？？"></a>更多应用场景 ？？</h2><p>本文描述的网络端口复用，其实现方式本质上还是一个TCP应用代理。基于这一点，我们还可以扩展出很多其他的应用场景。</p>
+<p>我想到的一种场景是动态IP认证。我们对HTTP和SSH进行复用，默认情况下HTTP可以被所有人访问，但SSH却需要通过IP地址认证后才会进行包转发。跟iptables等防火墙实现的IP地址访问规则不同，它是在应用层面来进行限制的，具有很强的灵活性，可以通过程序动态增加和删除。比如说，我通过手机浏览器访问特定的鉴权页面，通过验证后，系统自动将我当前在用的公网IP地址加入到访问列表，然后就能够顺利地通过SSH访问服务器了。连接建立后，可以将临时IP地址从访问列表中剔除，从一定程度上加强了服务器安全。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2016/10/29/Port-Reuse-Protocol-Multiplexer/" data-id="civbr78w60001zsgra90bnl62" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Go/">Go</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Python/">Python</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/sslh/">sslh</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/端口复用/">端口复用</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/网络/">网络</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/11/03/Python-Use-Http-Proxy/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          玩Python之HTTP代理
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/10/20/Password-Recovering-of-TopSec-Firewall/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">防火墙密码恢复手记</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Android/">Android</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Python/">Python</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/网络/">网络</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/逆向分析/">逆向分析</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/E900-S/">E900-S</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Go/">Go</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Proxy/">Proxy</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Python/">Python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/sslh/">sslh</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/代理/">代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/创维/">创维</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/天融信/">天融信</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/安全/">安全</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/密码恢复/">密码恢复</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/悦Me/">悦Me</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/漏洞/">漏洞</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/端口复用/">端口复用</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/网络/">网络</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/逆向分析/">逆向分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/防火墙/">防火墙</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/E900-S/" style="font-size: 10px;">E900-S</a> <a href="/tags/Go/" style="font-size: 20px;">Go</a> <a href="/tags/Proxy/" style="font-size: 10px;">Proxy</a> <a href="/tags/Python/" style="font-size: 20px;">Python</a> <a href="/tags/sslh/" style="font-size: 10px;">sslh</a> <a href="/tags/代理/" style="font-size: 10px;">代理</a> <a href="/tags/创维/" style="font-size: 10px;">创维</a> <a href="/tags/天融信/" style="font-size: 10px;">天融信</a> <a href="/tags/安全/" style="font-size: 10px;">安全</a> <a href="/tags/密码恢复/" style="font-size: 10px;">密码恢复</a> <a href="/tags/悦Me/" style="font-size: 10px;">悦Me</a> <a href="/tags/漏洞/" style="font-size: 10px;">漏洞</a> <a href="/tags/端口复用/" style="font-size: 10px;">端口复用</a> <a href="/tags/网络/" style="font-size: 10px;">网络</a> <a href="/tags/逆向分析/" style="font-size: 10px;">逆向分析</a> <a href="/tags/防火墙/" style="font-size: 10px;">防火墙</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">十一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">十月 2016</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2016/11/10/Install-Apks-On-E900-S-YueMe-Box/">在创维E900-S悦Me盒子上安装第三方软件</a>
+          </li>
+        
+          <li>
+            <a href="/2016/11/03/Python-Use-Http-Proxy/">玩Python之HTTP代理</a>
+          </li>
+        
+          <li>
+            <a href="/2016/10/29/Port-Reuse-Protocol-Multiplexer/">如何在Web服务器80端口上开启SSH服务</a>
+          </li>
+        
+          <li>
+            <a href="/2016/10/20/Password-Recovering-of-TopSec-Firewall/">防火墙密码恢复手记</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2016 jackyspy<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+  </div>
+</body>
+</html>

